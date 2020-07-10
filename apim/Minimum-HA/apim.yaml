@@ -311,7 +311,11 @@ Resources:
         - IpProtocol: tcp
           FromPort: '9771'
           ToPort: '9771'
-          SourceSecurityGroupId: !Ref WSO2APIMLoadBalancerSecurityGroup
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '9611'
+          ToPort: '9611'
+          CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: '8140'
           ToPort: '8140'
