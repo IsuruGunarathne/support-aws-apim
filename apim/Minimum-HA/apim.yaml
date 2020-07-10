@@ -309,6 +309,10 @@ Resources:
           ToPort: '5672'
           SourceSecurityGroupId: !Ref WSO2APIMLoadBalancerSecurityGroup
         - IpProtocol: tcp
+          FromPort: '9771'
+          ToPort: '9771'
+          SourceSecurityGroupId: !Ref WSO2APIMLoadBalancerSecurityGroup
+        - IpProtocol: tcp
           FromPort: '8140'
           ToPort: '8140'
           CidrIp: 0.0.0.0/0
