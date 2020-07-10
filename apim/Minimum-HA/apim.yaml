@@ -428,10 +428,14 @@ Resources:
             - !Sub "aws configure set aws_access_key_id '${AWSAccessKeyId}'"
             - !Sub "aws configure set aws_secret_access_key '${AWSAccessKeySecret}'"
             - aws configure set default.region us-east-1
-            - rm /home/ubuntu/wso2tg-init.sh
-            - aws s3 cp s3://wum-for-testgrid/wso2tg-init.sh /home/ubuntu/wso2tg-init.sh
-            - chmod +x /home/ubuntu/wso2tg-init.sh
-            - !Sub "/home/ubuntu/wso2tg-init.sh '${WUMUsername}' '${WUMPassword}' wso2am-${ProductVersion}"
+            - wget -O /etc/puppet/code/environments/production/modules/installers/files/ 'https://wso2.org/jenkins/view/products/job/products/job/product-apim/lastStableBuild/org.wso2.am$wso2am/artifact/org.wso2.am/wso2am/3.2.0-SNAPSHOT/wso2am-3.2.0-SNAPSHOT.zip'
+            - pushd /etc/puppet/code/environments/production/modules/installers/files/
+            - unzip wso2am-3.2.0-SNAPSHOT.zip
+            - mv wso2am-3.2.0-SNAPSHOT wso2am-3.2.0
+            - zip -r wso2am-3.2.0.zip wso2am-3.2.0/
+            - rm -rf wso2am-3.2.0
+            - rm wso2am-3.2.0-SNAPSHOT.zip
+            - popd
             - !Sub "/usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource PuppetMaster --region ${AWS::Region}"
             - !Join
               - ''
@@ -1338,9 +1342,9 @@ Parameters:
 Mappings:
   WSO2PuppetMasterRegionMap:
     us-east-1:
-       Ubuntu1804: ami-0865396541c380c09
+       Ubuntu1804: ami-0fe12a9a001676764
     us-east-2:
-       Ubuntu1804: ami-0d3080f4a2670b8a4
+       Ubuntu1804: ami-0438ae343d6c658fa
   WSO2APIMAMIRegionMap:
     us-east-1:
       CentOS7: ami-09d4e63ccc46083c7
