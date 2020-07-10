@@ -644,15 +644,6 @@ Resources:
               yum install -y puppet-agent
               echo $'[main]\nserver = puppet\ncertname = agent1\nenvironment = production\n\runinterval = 1h' > /etc/puppetlabs/puppet/puppet.conf
           fi
-          if [[ ${OperatingSystem} == "SUSE12" ]]; then
-              zypper install -y zip unzip
-              zypper in -y java-1_8_0-openjdk
-              zypper install nfs-client
-              zypper install -y python-pip
-              zypper install -y puppet-agent
-              zypper install boto3
-              echo $'[main]\nserver = puppet\ncertname = agent1\nenvironment = production\n\runinterval = 1h' > /etc/puppetlabs/puppet/puppet.conf
-          fi
           pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
           wget https://s3.amazonaws.com/wso2logarchiever/log_archiver/log_archiver.sh
           wget --no-check-certificate --no-proxy 'http://wso2-cloudformation-templates.s3.amazonaws.com/private_ip_extractor.py' -P /usr/local/bin/
@@ -727,17 +718,6 @@ Resources:
               done
           fi
           if [[ ${OperatingSystem} == "CentOS7" ]]; then
-              end=$((SECONDS+1200))
-              while [ $SECONDS -lt $end ] ; do
-                  sleep 10
-                  wget --delete-after --server-response --no-check-certificate "https://localhost:9443/carbon/admin/login.jsp"
-                  if [ $? -eq "0" ] ; then
-                      /usr/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2APIMNode1AutoScalingGroup --region ${AWS::Region}
-                      break
-                  fi
-              done
-          fi
-          if [[ ${OperatingSystem} == "SUSE12" ]]; then
               end=$((SECONDS+1200))
               while [ $SECONDS -lt $end ] ; do
                   sleep 10
@@ -852,15 +832,6 @@ Resources:
               yum install -y puppet-agent
               echo $'[main]\nserver = puppet\ncertname = agent2\nenvironment = production\n\runinterval = 1h' > /etc/puppetlabs/puppet/puppet.conf
           fi
-          if [[ ${OperatingSystem} == "SUSE12" ]]; then
-              zypper install -y zip unzip
-              zypper in -y java-1_8_0-openjdk
-              zypper install nfs-client
-              zypper install -y python-pip
-              zypper install -y puppet-agent
-              zypper install boto3
-              echo $'[main]\nserver = puppet\ncertname = agent2\nenvironment = production\n\runinterval = 1h' > /etc/puppetlabs/puppet/puppet.conf
-          fi
           pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
           wget https://s3.amazonaws.com/wso2logarchiever/log_archiver/log_archiver.sh
           wget --no-check-certificate --no-proxy 'http://wso2-cloudformation-templates.s3.amazonaws.com/private_ip_extractor.py' -P /usr/local/bin/
@@ -935,17 +906,6 @@ Resources:
               done
           fi
           if [[ ${OperatingSystem} == "CentOS7" ]]; then
-              end=$((SECONDS+1200))
-              while [ $SECONDS -lt $end ] ; do
-                  sleep 10
-                  wget --delete-after --server-response --no-check-certificate "https://localhost:9443/carbon/admin/login.jsp"
-                  if [ $? -eq "0" ] ; then
-                      /usr/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2APIMNode2AutoScalingGroup --region ${AWS::Region}
-                      break
-                  fi
-              done
-          fi
-          if [[ ${OperatingSystem} == "SUSE12" ]]; then
               end=$((SECONDS+1200))
               while [ $SECONDS -lt $end ] ; do
                   sleep 10
@@ -1365,11 +1325,9 @@ Mappings:
     us-east-1:
       CentOS7: ami-09d4e63ccc46083c7
       Ubuntu1804: ami-02a2048d0e4afcd10
-      SUSE12: ami-07a06c97eca8c1faf
     us-east-2:
       CentOS7: ami-009ac95229cc07041
       Ubuntu1804: ami-0a1af21a7b34de8f7
-      SUSE12: ami-0af0962fc8331524b
   DBEngineMap:
     MySQL-5.7:
       DBEngine: "mysql_5.7"
