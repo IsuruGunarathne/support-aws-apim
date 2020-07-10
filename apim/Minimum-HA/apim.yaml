@@ -684,7 +684,6 @@ Resources:
               /opt/puppetlabs/puppet/bin/puppet agent -vt >> /var/log/puppetlog.log
           fi
           sleep 30
-
           if [ ! -d "/mnt/efs/server/synapse-configs" ]; then
               mkdir -p /mnt/efs/server/synapse-configs
               cp -r /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/synapse-configs /mnt/efs
@@ -705,21 +704,15 @@ Resources:
           fi
           rm -rf /mnt/apim320/wso2am-3.2.0/repository/tenants
           ln -s /mnt/efs/tenants /mnt/apim320/wso2am-3.2.0/repository/tenants
-
           echo "${WSO2APIMEFSFileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
-
           service puppet stop
-
           export APIMNODE1IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance1)
           sed -i "s/tm1.local/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
           export APIMNODE2IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance2)
           sed -i "s/tm2.local/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
-
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/APIStatusMonitor.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/APIStatusMonitor.war
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/jaxrs_basic.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/jaxrs_basic.war
-
           /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/bin/wso2server.sh start
-
           ${CustomUserData}
           sleep 30
           if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
@@ -899,7 +892,6 @@ Resources:
               /opt/puppetlabs/puppet/bin/puppet agent -vt >> /var/log/puppetlog.log
           fi
           sleep 30
-
           if [ ! -d "/mnt/efs/server/synapse-configs" ]; then
               mkdir -p /mnt/efs/server/synapse-configs
               cp -r /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/synapse-configs /mnt/efs
@@ -920,22 +912,15 @@ Resources:
           fi
           rm -rf /mnt/apim320/wso2am-3.2.0/repository/tenants
           ln -s /mnt/efs/tenants /mnt/apim320/wso2am-3.2.0/repository/tenants
-
           echo "${WSO2APIMEFSFileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
-
           service puppet stop
-
           export APIMNODE1IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance1)
           sed -i "s/tm1.local/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
           export APIMNODE2IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance2)
           sed -i "s/tm2.local/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
-
-
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/APIStatusMonitor.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/APIStatusMonitor.war
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/jaxrs_basic.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/jaxrs_basic.war
-
           /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/bin/wso2server.sh start
-
           ${CustomUserData}
           sleep 30
           if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
