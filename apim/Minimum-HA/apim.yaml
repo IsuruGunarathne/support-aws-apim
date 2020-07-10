@@ -702,7 +702,8 @@ Resources:
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/APIStatusMonitor.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/APIStatusMonitor.war
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/jaxrs_basic.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/jaxrs_basic.war
 
-          /mnt/apim320/wso2am-3.2.0/bin/wso2server.sh start
+          /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/bin/wso2server.sh start
+
           ${CustomUserData}
           sleep 30
           if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
@@ -904,7 +905,8 @@ Resources:
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/APIStatusMonitor.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/APIStatusMonitor.war
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/jaxrs_basic.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/jaxrs_basic.war
 
-          /mnt/apim320/wso2am-3.2.0/bin/wso2server.sh start
+          /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/bin/wso2server.sh start
+
           ${CustomUserData}
           sleep 30
           if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
