@@ -680,7 +680,7 @@ Resources:
               mkdir -p /mnt/efs/server/synapse-configs
               cp -r /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/synapse-configs /mnt/efs
           fi
-          m -rf  /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/synapse-configs
+          rm -rf  /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/synapse-configs
           ln -s /mnt/efs/server/synapse-configs /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server
 
           if [ ! -d "/mnt/efs/server/executionplans" ]; then
@@ -882,7 +882,7 @@ Resources:
               mkdir -p /mnt/efs/server/synapse-configs
               cp -r /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/synapse-configs /mnt/efs
           fi
-          m -rf  /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/synapse-configs
+          rm -rf  /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/synapse-configs
           ln -s /mnt/efs/server/synapse-configs /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server
 
           if [ ! -d "/mnt/efs/server/executionplans" ]; then
