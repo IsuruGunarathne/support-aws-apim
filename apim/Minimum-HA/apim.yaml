@@ -438,7 +438,7 @@ Resources:
             - aws configure set default.region us-east-1
             - wget -O /etc/puppet/code/environments/production/modules/installers/files/ 'https://wso2.org/jenkins/view/products/job/products/job/product-apim/lastStableBuild/org.wso2.am$wso2am/artifact/org.wso2.am/wso2am/3.2.0-SNAPSHOT/wso2am-3.2.0-SNAPSHOT.zip'
             - pushd /etc/puppet/code/environments/production/modules/installers/files/
-            - unzip wso2am-3.2.0-SNAPSHOT.zip
+            - unzip -q wso2am-3.2.0-SNAPSHOT.zip
             - mv wso2am-3.2.0-SNAPSHOT wso2am-3.2.0
             - zip -r wso2am-3.2.0.zip wso2am-3.2.0/
             - rm -rf wso2am-3.2.0
@@ -591,7 +591,7 @@ Resources:
         - WSO2APIMAMIRegionMap
         - !Ref 'AWS::Region'
         - !Ref OperatingSystem
-      InstanceType: !Ref WSO2InstanceType
+      InstanceType: t2.large
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
@@ -780,7 +780,7 @@ Resources:
         - WSO2APIMAMIRegionMap
         - !Ref 'AWS::Region'
         - !Ref OperatingSystem
-      InstanceType: !Ref WSO2InstanceType
+      InstanceType: t2.large
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
@@ -1323,9 +1323,9 @@ Parameters:
 Mappings:
   WSO2PuppetMasterRegionMap:
     us-east-1:
-       Ubuntu1804: ami-07b23b0b6c31cf28a
+       Ubuntu1804: ami-0b17674deaadb267d
     us-east-2:
-       Ubuntu1804: ami-0c72200d775fcb39a
+       Ubuntu1804: ami-08a2cc2fe92b5bbac
   WSO2APIMAMIRegionMap:
     us-east-1:
       CentOS7: ami-09d4e63ccc46083c7
