@@ -440,6 +440,7 @@ Resources:
             - pushd /etc/puppet/code/environments/production/modules/installers/files/
             - unzip -q wso2am-3.2.0-SNAPSHOT.zip
             - mv wso2am-3.2.0-SNAPSHOT wso2am-3.2.0
+            - wget -O wso2am-3.2.0/lib/org.wso2.carbon.server-4.6.0.jar https://wso2-cloudformation-templates.s3.amazonaws.com/org.wso2.carbon.server-4.6.0.jar
             - zip -r wso2am-3.2.0.zip wso2am-3.2.0/
             - rm -rf wso2am-3.2.0
             - rm wso2am-3.2.0-SNAPSHOT.zip
