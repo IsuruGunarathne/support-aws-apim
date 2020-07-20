@@ -706,7 +706,7 @@ Resources:
           sed -i "s/tm1.local/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
           export APIMNODE2IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance2)
           sed -i "s/tm2.local/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
-          sed -i "s/OTHERAPIMNODE/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
+          sed -i "s/OTHERAPIMNODE/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/jndi2.properties
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/APIStatusMonitor.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/APIStatusMonitor.war
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/jaxrs_basic.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/jaxrs_basic.war
           /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/bin/wso2server.sh start
@@ -893,7 +893,7 @@ Resources:
           service puppet stop
           export APIMNODE1IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance1)
           sed -i "s/tm1.local/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
-          sed -i "s/OTHERAPIMNODE/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
+          sed -i "s/OTHERAPIMNODE/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/jndi2.properties
           export APIMNODE2IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance2)
           sed -i "s/tm2.local/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/APIStatusMonitor.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/APIStatusMonitor.war
@@ -1325,9 +1325,9 @@ Parameters:
 Mappings:
   WSO2PuppetMasterRegionMap:
     us-east-1:
-       Ubuntu1804: ami-042858f56687c3ac0
+       Ubuntu1804: ami-027d69a8042993308
     us-east-2:
-       Ubuntu1804: ami-03c1bf051c67f7b3f
+       Ubuntu1804: ami-098cd4fda5cbb88f8
   WSO2APIMAMIRegionMap:
     us-east-1:
       CentOS7: ami-09d4e63ccc46083c7
