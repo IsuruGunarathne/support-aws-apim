@@ -700,7 +700,7 @@ Resources:
               cp -r /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/tenants /mnt/efs
           fi
           rm -rf /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/tenants
-          ln -s /mnt/efs/tenants /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/tenants
+          ln -s /mnt/efs/tenants /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository
           echo "${WSO2APIMEFSFileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
           service puppet stop
           export APIMNODE1IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance1)
@@ -889,7 +889,7 @@ Resources:
               cp -r /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/tenants /mnt/efs
           fi
           rm -rf /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/tenants
-          ln -s /mnt/efs/tenants /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/tenants
+          ln -s /mnt/efs/tenants /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository
           echo "${WSO2APIMEFSFileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
           service puppet stop
           export APIMNODE1IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance1)
