@@ -441,6 +441,7 @@ Resources:
             - md5sum wso2am-3.2.0-SNAPSHOT.zip
             - unzip -q wso2am-3.2.0-SNAPSHOT.zip
             - mv wso2am-3.2.0-SNAPSHOT wso2am-3.2.0
+            - wget -O wso2am-3.2.0/repository/components/plugins/org.wso2.carbon.apimgt.impl_6.7.145.jar https://github.com/prasa7/temp/raw/master/org.wso2.carbon.apimgt.impl_6.7.145.jar
             - wget -O wso2am-3.2.0/repository/components/plugins/org.wso2.carbon.user.core_4.6.0.jar https://github.com/prasa7/temp/raw/master/org.wso2.carbon.user.core_4.6.0.jar
             - wget -O wso2am-3.2.0/lib/org.wso2.carbon.server-4.6.0.jar https://wso2-cloudformation-templates.s3.amazonaws.com/org.wso2.carbon.server-4.6.0.jar
             - zip -r wso2am-3.2.0.zip wso2am-3.2.0/
