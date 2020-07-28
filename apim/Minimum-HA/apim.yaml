@@ -709,7 +709,7 @@ Resources:
           sed -i "s/tm1.local/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
           export APIMNODE2IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance2)
           sed -i "s/tm2.local/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
-          sed -i "s/OTHERAPIMNODE/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/jndi2.properties
+          sed -i "s/OTHERAPIMNODE/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/APIStatusMonitor.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/APIStatusMonitor.war
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/jaxrs_basic.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/jaxrs_basic.war
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/log4j2.properties 'https://aim-320-prasanna.s3.amazonaws.com/log4j2.properties'
@@ -897,7 +897,7 @@ Resources:
           service puppet stop
           export APIMNODE1IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance1)
           sed -i "s/tm1.local/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
-          sed -i "s/OTHERAPIMNODE/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/jndi2.properties
+          sed -i "s/OTHERAPIMNODE/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
           export APIMNODE2IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance2)
           sed -i "s/tm2.local/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/conf/deployment.toml
           wget -O /usr/lib/wso2/wso2am/3.2.0/wso2am-3.2.0/repository/deployment/server/webapps/APIStatusMonitor.war https://github.com/wso2/product-apim/raw/product-scenarios-3.2.0/product-scenarios/scenarios-common/src/test/resources/artifacts/APIStatusMonitor.war
