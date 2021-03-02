@@ -441,8 +441,6 @@ Resources:
             - md5sum wso2am-4.0.0-SNAPSHOT.zip
             - unzip -q wso2am-4.0.0-SNAPSHOT.zip
             - mv wso2am-4.0.0-SNAPSHOT wso2am-4.0.0
-            - wget -O wso2am-4.0.0/repository/components/plugins/org.wso2.carbon.user.core_4.6.0.jar https://github.com/prasa7/temp/raw/master/org.wso2.carbon.user.core_4.6.0.jar
-            - wget -O wso2am-4.0.0/lib/org.wso2.carbon.server-4.6.0.jar https://wso2-cloudformation-templates.s3.amazonaws.com/org.wso2.carbon.server-4.6.0.jar
             - zip -r wso2am-4.0.0.zip wso2am-4.0.0/
             - rm -rf wso2am-4.0.0
             - rm wso2am-4.0.0-SNAPSHOT.zip
@@ -897,8 +895,11 @@ Resources:
           sed -i "s/tm1.local/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/repository/conf/deployment.toml
           sed -i "s/OTHERAPIMNODE/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/repository/conf/deployment.toml
           export APIMNODE2IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance2)
+<<<<<<< HEAD
           wget -O /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/repository/deployment/server/webapps/APIStatusMonitor.war https://github.com/wso2/product-apim/raw/product-scenarios-4.0.0/product-scenarios/scenarios-common/src/test/resources/artifacts/APIStatusMonitor.war
           wget -O /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/repository/deployment/server/webapps/jaxrs_basic.war https://github.com/wso2/product-apim/raw/product-scenarios-4.0.0/product-scenarios/scenarios-common/src/test/resources/artifacts/jaxrs_basic.war
+=======
+>>>>>>> Changing version to 4.0.0
           sed -i "s/tm2.local/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/repository/conf/deployment.toml
           sleep 120
           /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/bin/wso2server.sh start
