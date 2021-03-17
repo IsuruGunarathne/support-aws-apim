@@ -218,7 +218,7 @@ Resources:
     Properties:
       VPCSecurityGroups:
         - !Ref WSO2APIMDBInstanceSecurityGroup
-      DBInstanceClass: !Ref DBInstanceType
+      DBInstanceClass: db.m5.large
       AllocatedStorage: !Ref DBAllocationStorage
       BackupRetentionPeriod: '0'
       DBInstanceIdentifier: WSO2APIMDBInstance
