@@ -1310,6 +1310,7 @@ Parameters:
       - Oracle-SE2-12.1
       - SQLServer-SE-13.00
       - SQLServer-SE-14.00
+      - SQLServer-SE-15.00
   InternalPrepareForTest:
     Type: String
     Default: "False"
@@ -1352,6 +1353,8 @@ Mappings:
       DBEngine: "sqlserver-se_13.00"
     SQLServer-SE-14.00:
       DBEngine: "sqlserver-se_14.00"
+    SQLServer-SE-15.00:
+      DBEngine: "sqlserver-se_15.00"
     Oracle-SE1-11.2:
       DBEngine: "oracle-se1_11.2"
     Oracle-SE2-12.1:
