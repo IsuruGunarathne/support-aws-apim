@@ -713,7 +713,7 @@ Resources:
           wget -O /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/repository/deployment/server/webapps/jaxrs_basic.war https://github.com/wso2/product-apim/raw/product-scenarios-4.0.0/product-scenarios/scenarios-common/src/test/resources/artifacts/jaxrs_basic.war
           sed -i "s/tm2.local/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/repository/conf/deployment.toml
           sed -i "s/OTHERAPIMNODE/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/repository/conf/deployment.toml
-          /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/bin/wso2server.sh start
+          /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/bin/api-manager.sh start
           ${CustomUserData}
           sleep 30
           if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
@@ -903,7 +903,7 @@ Resources:
           wget -O /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/repository/deployment/server/webapps/jaxrs_basic.war https://github.com/wso2/product-apim/raw/product-scenarios-4.0.0/product-scenarios/scenarios-common/src/test/resources/artifacts/jaxrs_basic.war
           sed -i "s/tm2.local/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/repository/conf/deployment.toml
           sleep 120
-          /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/bin/wso2server.sh start
+          /usr/lib/wso2/wso2am/4.0.0/wso2am-4.0.0/bin/api-manager.sh start
           ${CustomUserData}
           sleep 30
           if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
