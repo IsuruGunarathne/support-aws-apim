@@ -1330,9 +1330,9 @@ Parameters:
 Mappings:
   WSO2PuppetMasterRegionMap:
     us-east-1:
-       Ubuntu1804: ami-0122aad907c341524
+       Ubuntu1804: ami-0bbd0858b43db7659
     us-east-2:
-       Ubuntu1804: ami-0253c8af66084d3cd
+       Ubuntu1804: ami-0beeccc0ef8993f87
   WSO2APIMAMIRegionMap:
     us-east-1:
       CentOS7: ami-09d4e63ccc46083c7
