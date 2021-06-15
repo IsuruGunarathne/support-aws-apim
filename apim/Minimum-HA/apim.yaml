@@ -1306,6 +1306,8 @@ Parameters:
       - Postgres-9.4.12
       - Postgres-9.6
       - Postgres-10.5
+      - Postgres-12.3
+      - Postgres-13.2
       - Oracle-SE1-11.2
       - Oracle-SE2-12.1
       - SQLServer-SE-13.00
@@ -1349,6 +1351,10 @@ Mappings:
       DBEngine: "postgres_9.6"
     Postgres-10.5:
       DBEngine: "postgres_10.5"
+    Postgres-12.3:
+      DBEngine: "postgres_12.3"
+    Postgres-13.2:
+      DBEngine: "postgres_13.2"
     SQLServer-SE-13.00:
       DBEngine: "sqlserver-se_13.00"
     SQLServer-SE-14.00:
