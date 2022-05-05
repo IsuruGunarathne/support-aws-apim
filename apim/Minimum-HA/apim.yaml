@@ -1226,9 +1226,6 @@ Parameters:
     Description: A valid SSL certificate used for HTTPS
     Type: String
     MinLength: 1
-    Default: useast2_2022
-    AllowedValues:
-      - useast2_2022
   WSO2InstanceType:
     Type: String
     Default: t2.medium
