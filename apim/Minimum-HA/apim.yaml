@@ -1063,11 +1063,11 @@ Resources:
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 4
       HealthCheckPath: /services/Version
-      HealthCheckPort: 8243
+      HealthCheckPort: 9443
       Matcher:
         HttpCode: 200
-      Name: apim-carbon-8243
-      Port: 8243
+      Name: apim-carbon-94433
+      Port: 9443
       Protocol: HTTPS
       TargetGroupAttributes:
       - Key: deregistration_delay.timeout_seconds
