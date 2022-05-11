@@ -1202,7 +1202,7 @@ Outputs:
         - !GetAtt
           - WSO2APIMLoadBalancer
           - DNSName
-        - ':8243'
+        - ':9443'
     Description: APIM HTTPS Gateway endpoint
   GatewayHttpUrl:
     Value: !Join
