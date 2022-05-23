@@ -1036,7 +1036,7 @@ Resources:
       HealthCheckPort: 9443
       Matcher:
         HttpCode: 200
-      Name: !Join [ '-', [ 'apim-carbon-9443', !Ref 'UniqueIdentifier' ] ]
+      Name: !Join [ '-', [ 'apim-carbon-9443', !Ref 'UniqueIdentifier', '1' ] ]
       Port: 9443
       Protocol: HTTPS
       TargetGroupAttributes:
@@ -1061,7 +1061,7 @@ Resources:
       HealthCheckPort: 9443
       Matcher:
         HttpCode: 200
-      Name: !Join [ '-', [ 'apim-carbon-9443', !Ref 'UniqueIdentifier' ] ]
+      Name: !Join [ '-', [ 'apim-carbon-9443', !Ref 'UniqueIdentifier', '2' ] ]
       Port: 9443
       Protocol: HTTPS
       TargetGroupAttributes:
