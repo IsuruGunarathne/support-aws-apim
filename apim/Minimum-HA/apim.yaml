@@ -351,26 +351,9 @@ Resources:
             - hostname puppetmaster
             - echo $(hostname) >> /etc/hostname
             - echo "127.0.0.1 $(hostname)" >> /etc/hosts
-            - !Join
-              - ''
-              - - sed -i "s/access-key/
-                - !Ref AWSAccessKeyId
-                - /g" /usr/lib/logstash-6.5.1/logstash-PUPPETMASTER.conf
-            - !Join
-              - ''
-              - - sed -i "s^secret-key^
-                - !Ref AWSAccessKeySecret
-                - ^g" /usr/lib/logstash-6.5.1/logstash-PUPPETMASTER.conf
-            - !Join
-              - ''
-              - - sed -i "s^STACK_NAME^
-                - !Ref AWS::StackName
-                - ^g" /usr/lib/logstash-6.5.1/logstash-PUPPETMASTER.conf
             - export INSTANCEID=$(ec2metadata | grep -m 1 'instance-id:' | awk '{print $2}')
-            - sed -i "s/INSTANCE_ID/$INSTANCEID/g" /usr/lib/logstash-6.5.1/logstash-PUPPETMASTER.conf
             - apt-get update
             - apt install openjdk-8-jre-headless -y
-            - nohup /usr/lib/logstash-6.5.1/bin/logstash -f /usr/lib/logstash-6.5.1/logstash-PUPPETMASTER.conf & >> /home/ubuntu/elastic.log
             - sed -i '/\[main\]/a dns_alt_names=puppetmaster,puppet' /etc/puppet/puppet.conf
             - sed -i '/\[master\]/a autosign=true' /etc/puppet/puppet.conf
             - !Join
@@ -844,7 +827,6 @@ Resources:
           wget --no-check-certificate --no-proxy 'http://wso2-cloudformation-templates.s3.amazonaws.com/private_ip_extractor.py' -P /usr/local/bin/
           mv log_archiver.sh /usr/lib/
           export ProductVersion=4.1.0
-          nohup /usr/lib/logstash-6.5.1/bin/logstash -f /usr/lib/logstash-6.5.1/logstash-APIM.conf &
           export PuppetmasterIP=${PuppetMaster.PrivateIp}
           echo "$PuppetmasterIP puppet puppetmaster" >> /etc/hosts
           service puppet restart
