@@ -1275,6 +1275,7 @@ Parameters:
       - db.m3.xlarge
       - db.m3.2xlarge
       - db.m4.large
+      - db.m5.large
   DB:
     Type: String
     Default: MySQL-5.7
