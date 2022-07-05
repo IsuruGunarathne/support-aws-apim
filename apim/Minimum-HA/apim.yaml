@@ -372,7 +372,6 @@ Resources:
             - aws s3 cp s3://wum-for-testgrid/wso2-update.sh /home/ubuntu/wso2-update.sh
             - chmod +x /home/ubuntu/wso2-update.sh
             - !Sub "/home/ubuntu/wso2-update.sh '${WUMUsername}' '${WUMPassword}' wso2am-${ProductVersion}"
-            - !Sub "/usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource PuppetMaster --region ${AWS::Region}"
             - aws s3 cp s3://testgrid-pipeline-logs/shutdownvm/instance-shutdown /etc/init.d/instance-shutdown
             - !Join
               - ''
@@ -522,6 +521,7 @@ Resources:
             - wget -O /home/ubuntu/apim/apim410/apim_oracle_user.sql 'https://apim-test-grid.s3.amazonaws.com/4.1.0/apim_oracle_user.sql'
             - wget -O /home/ubuntu/apim/apim410/apim_oracle_apimgt_db.sql 'https://apim-test-grid.s3.amazonaws.com/4.1.0/apim_oracle_apimgt_db.sql'
             - bash /usr/local/bin/provision_db_apim.sh
+            - !Sub "/usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource PuppetMaster --region ${AWS::Region}"
     DependsOn:
       - WSO2APIMPublicInternetGateway
       - WSO2APIMVPCInternetGatewayAttachment
