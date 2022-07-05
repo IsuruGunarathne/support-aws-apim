@@ -368,15 +368,10 @@ Resources:
             - !Sub "aws configure set aws_access_key_id '${AWSAccessKeyId}'"
             - !Sub "aws configure set aws_secret_access_key '${AWSAccessKeySecret}'"
             - aws configure set default.region us-east-1
-            - wget -O /etc/puppet/code/environments/production/modules/installers/files/wso2am-4.1.0-beta.zip 'https://wso2.org/jenkins/view/products/job/products/job/product-apim/2248/artifact/target/checkout/modules/distribution/product/target/wso2am-4.1.0-beta.zip'
-            - pushd /etc/puppet/code/environments/production/modules/installers/files/
-            - md5sum wso2am-4.1.0-beta.zip
-            - unzip -q wso2am-4.1.0-beta.zip
-            - mv wso2am-4.1.0-beta wso2am-4.1.0
-            - zip -r wso2am-4.1.0.zip wso2am-4.1.0/
-            - rm -rf wso2am-4.1.0
-            - rm wso2am-4.1.0-beta.zip
-            - popd
+            - aws s3 cp s3://wum-for-testgrid/uat-config.json /home/ubuntu/uat-config.json
+            - aws s3 cp s3://wum-for-testgrid/wso2-update.sh /home/ubuntu/wso2-update.sh
+            - chmod +x /home/ubuntu/wso2-update.sh
+            - !Sub "/home/ubuntu/wso2-update.sh '${WUMUsername}' '${WUMPassword}' wso2am-${ProductVersion}"
             - !Sub "/usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource PuppetMaster --region ${AWS::Region}"
             - aws s3 cp s3://testgrid-pipeline-logs/shutdownvm/instance-shutdown /etc/init.d/instance-shutdown
             - !Join
