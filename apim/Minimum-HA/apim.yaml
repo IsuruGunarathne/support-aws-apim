@@ -637,7 +637,7 @@ Resources:
           mkdir -p /mnt/efs
           mount -t nfs4 -o nfsvers=4.1 ${WSO2APIMEFSFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs
           sleep 100
-          export FACTER_profile=apim400
+          export FACTER_profile=apim410
           if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
               puppet agent -vt >> /var/log/puppetlog.log
           fi
@@ -828,7 +828,7 @@ Resources:
           mkdir -p /mnt/efs
           mount -t nfs4 -o nfsvers=4.1 ${WSO2APIMEFSFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs
           sleep 110
-          export FACTER_profile=apim400
+          export FACTER_profile=apim410
           if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
               puppet agent -vt >> /var/log/puppetlog.log
           fi
