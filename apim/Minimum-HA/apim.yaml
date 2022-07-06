@@ -420,7 +420,7 @@ Resources:
                   - DNSName
                 - >-
                   /g"
-                  /etc/puppet/code/environments/production/modules/apim${ProductVersion//.}/manifests/params.pp
+                  /etc/puppet/code/environments/production/modules/apim410/manifests/params.pp
             - !Join
               - ''
               - - sed -i "s/CF_ELB_DNS_NAME/
