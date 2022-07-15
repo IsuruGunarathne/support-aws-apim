@@ -368,10 +368,10 @@ Resources:
             - !Sub "aws configure set aws_access_key_id '${AWSAccessKeyId}'"
             - !Sub "aws configure set aws_secret_access_key '${AWSAccessKeySecret}'"
             - aws configure set default.region us-east-1
-            - aws s3 cp s3://wum-for-testgrid/uat-config.json /home/ubuntu/uat-config.json
-            - aws s3 cp s3://wum-for-testgrid/wso2-update.sh /home/ubuntu/wso2-update.sh
-            - chmod +x /home/ubuntu/wso2-update.sh
-            - !Sub "/home/ubuntu/wso2-update.sh '${WUMUsername}' '${WUMPassword}' wso2am-${ProductVersion}"
+            - aws s3 cp s3://wum-for-testgrid/staging-config.json /home/ubuntu/staging-config.json
+            - aws s3 cp s3://wum-for-testgrid/staging-wso2-update.sh /home/ubuntu/staging-wso2-update.sh
+            - chmod +x /home/ubuntu/staging-wso2-update.sh
+            - !Sub "/home/ubuntu/staging-wso2-update.sh '${WUMUsername}' '${WUMPassword}' wso2am-${ProductVersion}"
             - aws s3 cp s3://testgrid-pipeline-logs/shutdownvm/instance-shutdown /etc/init.d/instance-shutdown
             - !Join
               - ''
