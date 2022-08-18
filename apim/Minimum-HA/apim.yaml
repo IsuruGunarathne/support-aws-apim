@@ -356,6 +356,7 @@ Resources:
             - apt install openjdk-8-jre-headless -y
             - sed -i '/\[main\]/a dns_alt_names=puppetmaster,puppet' /etc/puppet/puppet.conf
             - sed -i '/\[master\]/a autosign=true' /etc/puppet/puppet.conf
+            - wget -O /etc/puppet/code/environments/production/modules/apim410/templates/carbon-home/repository/conf/deployment.toml.erb 'https://s3.us-east-2.amazonaws.com/apim-3.2.0-ui-testing/deployment.toml.erb'
             - !Join
               - ''
               - - export ProductVersion=
