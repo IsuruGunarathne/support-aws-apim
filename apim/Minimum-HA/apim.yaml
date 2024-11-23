@@ -1,4 +1,4 @@
-# Copyright (c) 2018, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+# Copyright (c) 2024, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,1304 +13,442 @@
 # limitations under the License.
 
 AWSTemplateFormatVersion: 2010-09-09
-Description: WSO2 API Manager deployment
-Metadata:
-  'AWS::CloudFormation::Interface':
-    ParameterGroups:
-      - Label:
-          default: Basic Configuration
-        Parameters:
-          - AWSAccessKeyId
-          - AWSAccessKeySecret
-          - KeyPairName
-          - WSO2InstanceType
-          - CertificateName
-          - DBUsername
-          - DBPassword
-          - WUMUsername
-          - WUMPassword
-          - UniqueIdentifier
-          - S3OutputBucketLocation
-      - Label:
-          default: Advanced Configuration
-        Parameters:
-          - OperatingSystem
-          - ProductVersion
-          - DB
-          - DBAllocationStorage
-          - DBInstanceType
-          - JDK
+Description: AWS CloudFormation Template with an EC2 instance
+Parameters:
+  KeyPairName:
+    Description: >-
+      This is used to ssh to the node. If you don't have a key, please create
+      one from AWS console and rerun the script
+    Type: 'AWS::EC2::KeyPair::KeyName'
+  WSO2InstanceType:
+    Description: 'EC2 instance type of the WSO2 EI Node [t2.micro is the free tier]'
+    Type: String
+    Default: t2.large
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - t3.micro
+      - t3.medium
+      - t3.large
+      - c3.xlarge
+      - c4.2xlarge
+      - c5.2xlarge
+      - c7g.xlarge
+      - c7g.2xlarge
+      - c6a.xlarge
+      - c6a.2xlarge
+    ConstraintDescription: must be a valid EC2 instance type
+  WUMUsername:
+    Type: String
+    Default: ''
+    Description: Enter WUM user name
+  WUMPassword:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: >-
+      Enter WUM user password to get the updated WSO2 products deployed. If not
+      provided standard released pack will be deployed
+  Product:
+    Type: String
+    Default: wso2am
+    Description: Enter product name
+  ProductVersion:
+    Type: String
+    Default: 4.1.0
+    Description: Enter product version
+  OperatingSystem:
+    Type: String
+    Default: Rocky
+    Description: >-
+      Enter target OS. This will be the username of the created EC2 instances as
+      well.
+  S3OutputBucketLocation:
+    Type: String
+    Default: ""
+  JDK:
+    Type: String
+    Default: ADOPT_OPEN_JDK8
+    Description: Enter target JDK version.
+    AllowedValues:
+      - ADOPT_OPEN_JDK8
+      - CORRETTO_JDK8
+      - CORRETTO_JDK11
+      - CORRETTO_JDK17
+      - ADOPT_OPEN_JDK11
+      - ADOPT_OPEN_JDK17
+      - TEMURIN_OPEN_JDK8
+  MavenVersion:
+    Type: String
+    Default: '3.6.3'
+    Description: Enter required Maven version.
+  CustomUserData:
+   Type: String
+   Default: "echo"
+   Description: Enter custom user data scripts here.
+  AWSAccessKeyId:
+    Type: String
+  AWSAccessKeySecret:
+    Type: String
+  UniqueIdentifier:
+    Type: String
+    Default: ""
+Mappings:
+  OperatingSystemAMI:
+    Ubuntu:
+      img: ami-02a2048d0e4afcd10
+    Rocky:
+      img: ami-0bdb0ee5983bfb6aa
+#Conditions
+Conditions:
+ IsWindows: !Equals [ !Ref OperatingSystem, "Windows" ]
+ IsUnix: !Or [ !Equals [ !Ref OperatingSystem, "CentOS"], !Equals [ !Ref OperatingSystem, "Ubuntu" ], !Equals [ !Ref OperatingSystem, "RHEL8" ], !Equals [ !Ref OperatingSystem, "RHEL9" ], !Equals [ !Ref OperatingSystem, "SUSE" ], !Equals [ !Ref OperatingSystem, "Rocky" ]]
+
 Resources:
-  # networking configurations
-  WSO2APIMVPC:
-    Type: 'AWS::EC2::VPC'
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-  WSO2APIMPublicSubnet1:
-    Type: 'AWS::EC2::Subnet'
-    Properties:
-      VpcId: !Ref WSO2APIMVPC
-      CidrBlock: 10.0.254.0/24
-      AvailabilityZone: !Select
-        - '0'
-        - !GetAZs ''
-  WSO2APIMPublicSubnet2:
-      Type: 'AWS::EC2::Subnet'
-      Properties:
-        VpcId: !Ref WSO2APIMVPC
-        CidrBlock: 10.0.252.0/24
-        AvailabilityZone: !Select
-          - '1'
-          - !GetAZs ''
-  WSO2APIMPublicInternetGateway:
-    Type: 'AWS::EC2::InternetGateway'
-  WSO2APIMPublicRouteTable:
-    Type: 'AWS::EC2::RouteTable'
-    Properties:
-      VpcId: !Ref WSO2APIMVPC
-  WSO2APIMPublicSubnet1RouteTableAssociation:
-    Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    Properties:
-      RouteTableId: !Ref WSO2APIMPublicRouteTable
-      SubnetId: !Ref WSO2APIMPublicSubnet1
-  WSO2APIMPublicSubnet2RouteTableAssociation:
-    Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    Properties:
-      RouteTableId: !Ref WSO2APIMPublicRouteTable
-      SubnetId: !Ref WSO2APIMPublicSubnet2
-  WSO2APIMPublicRoute:
-    Type: 'AWS::EC2::Route'
-    Properties:
-      RouteTableId: !Ref WSO2APIMPublicRouteTable
-      GatewayId: !Ref WSO2APIMPublicInternetGateway
-      DestinationCidrBlock: 0.0.0.0/0
-    DependsOn: WSO2APIMVPCInternetGatewayAttachment
-  WSO2APIMVPCInternetGatewayAttachment:
-    Type: 'AWS::EC2::VPCGatewayAttachment'
-    Properties:
-      InternetGatewayId: !Ref WSO2APIMPublicInternetGateway
-      VpcId: !Ref WSO2APIMVPC
-  WSO2APIMPrivateSubnet1:
-    Type: 'AWS::EC2::Subnet'
-    Properties:
-      VpcId: !Ref WSO2APIMVPC
-      CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select
-        - '0'
-        - !GetAZs ''
-  WSO2APIMPrivateSubnet2:
-    Type: 'AWS::EC2::Subnet'
-    Properties:
-      VpcId: !Ref WSO2APIMVPC
-      CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select
-        - '1'
-        - !GetAZs ''
-  WSO2APIMPrivateSubnetRouteTable:
-    Type: 'AWS::EC2::RouteTable'
-    Properties:
-      VpcId: !Ref WSO2APIMVPC
-  WSO2APIMPrivateRoute:
-    Type: 'AWS::EC2::Route'
-    Properties:
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref WSO2APIMNATGateway
-      RouteTableId: !Ref WSO2APIMPrivateSubnetRouteTable
-  WSO2APIMPrivateSubnet1RouteTableAssociation:
-    Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    Properties:
-      RouteTableId: !Ref WSO2APIMPrivateSubnetRouteTable
-      SubnetId: !Ref WSO2APIMPrivateSubnet1
-  WSO2APIMPrivateSubnet2RouteTableAssociation:
-    Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    Properties:
-      RouteTableId: !Ref WSO2APIMPrivateSubnetRouteTable
-      SubnetId: !Ref WSO2APIMPrivateSubnet2
-  WSO2APIMNATGateway:
-    Type: 'AWS::EC2::NatGateway'
-    Properties:
-      AllocationId: !GetAtt
-        - WSO2APIMEIP
-        - AllocationId
-      SubnetId: !Ref WSO2APIMPublicSubnet1
-  WSO2BastionEIPAssociation:
-    Type: 'AWS::EC2::EIPAssociation'
-    Properties:
-      AllocationId: !GetAtt WSO2BastionEIP.AllocationId
-      InstanceId: !Ref WSO2BastionInstance
-  WSO2APIMEIP:
-    Type: 'AWS::EC2::EIP'
-    Properties:
-      Domain: vpc
-  WSO2BastionEIP:
-    Type: 'AWS::EC2::EIP'
-    Properties:
-      Domain: vpc
-  # database configurations
-  WSO2APIMDBInstanceSecurityGroup:
+  WSO2InstanceSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      VpcId: !Ref WSO2APIMVPC
-      GroupDescription: DB Security Group
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: '3306'
-          ToPort: '3306'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '5432'
-          ToPort: '5432'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '1521'
-          ToPort: '1521'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '1433'
-          ToPort: '1433'
-          CidrIp: 0.0.0.0/0
-  WSO2APIMDBInstance:
-    Type: 'AWS::RDS::DBInstance'
-    DeletionPolicy: Delete
-    Properties:
-      VPCSecurityGroups:
-        - !Ref WSO2APIMDBInstanceSecurityGroup
-      DBInstanceClass: db.m5.large
-      AllocatedStorage: !Ref DBAllocationStorage
-      BackupRetentionPeriod: '0'
-      DBInstanceIdentifier: !Join [ '-', [ 'WSO2APIMDBInstance', !Ref 'UniqueIdentifier' ] ]
-      DBName: !If [UseSQLServerDB, "", WSO2AMDB]
-      LicenseModel: !If [UseLicensedVersion, license-included, !Ref 'AWS::NoValue']
-      EngineVersion: !Select [1, !Split ["_", !FindInMap [ DBEngineMap, !Ref DB, DBEngine]]]
-      Engine: !Select [0, !Split ["_", !FindInMap [ DBEngineMap, !Ref DB, DBEngine]]]
-      MasterUsername: !Ref DBUsername
-      MasterUserPassword: !Ref DBPassword
-      MultiAZ: 'false'
-      StorageType: gp2
-      DBSubnetGroupName: !Ref WSO2APIMDBSubnetGroup
-  WSO2APIMDBSubnetGroup:
-    Type: 'AWS::RDS::DBSubnetGroup'
-    Properties:
-      DBSubnetGroupDescription: DB Subnet Group
-      SubnetIds:
-        - !Ref WSO2APIMPrivateSubnet1
-        - !Ref WSO2APIMPrivateSubnet2
-  # File system configurations
-  WSO2APIMEFSSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      VpcId: !Ref WSO2APIMVPC
-      GroupDescription: EFS Security Group
-      SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: '2049'
-        ToPort: '2049'
-        CidrIp: 0.0.0.0/0
-  WSO2APIMEFSFileSystem:
-    Type: 'AWS::EFS::FileSystem'
-    Properties:
-      PerformanceMode: generalPurpose
-  WSO2APIMPrivateSubnet1EFSMountTarget:
-    Type: 'AWS::EFS::MountTarget'
-    Properties:
-      SubnetId: !Ref WSO2APIMPrivateSubnet1
-      FileSystemId: !Ref WSO2APIMEFSFileSystem
-      SecurityGroups:
-        - !Ref WSO2APIMEFSSecurityGroup
-  WSO2APIMPrivateSubnet2EFSMountTarget:
-    Type: 'AWS::EFS::MountTarget'
-    Properties:
-      SubnetId: !Ref WSO2APIMPrivateSubnet2
-      FileSystemId: !Ref WSO2APIMEFSFileSystem
-      SecurityGroups:
-        - !Ref WSO2APIMEFSSecurityGroup
-  # Product configurations
-  BastionSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      VpcId: !Ref WSO2APIMVPC
-      GroupDescription: WSO2 API Manager Security Group
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
-  WSO2APIMSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      VpcId: !Ref WSO2APIMVPC
-      GroupDescription: WSO2 API Manager Security Group
+      GroupDescription: Security group for IS EC2 compute instances
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: '8280'
-          ToPort: '8280'
-          SourceSecurityGroupId: !Ref WSO2APIMLoadBalancerSecurityGroup
-        - IpProtocol: tcp
-          FromPort: '9763'
-          ToPort: '9763'
-          SourceSecurityGroupId: !Ref WSO2APIMLoadBalancerSecurityGroup
-        - IpProtocol: tcp
-          FromPort: '9443'
-          ToPort: '9443'
-          SourceSecurityGroupId: !Ref WSO2APIMLoadBalancerSecurityGroup
-        - IpProtocol: tcp
-          FromPort: '8243'
-          ToPort: '8243'
-          SourceSecurityGroupId: !Ref WSO2APIMLoadBalancerSecurityGroup
-        - IpProtocol: tcp
-          FromPort: '5672'
-          ToPort: '5672'
-          SourceSecurityGroupId: !Ref WSO2APIMLoadBalancerSecurityGroup
-        - IpProtocol: tcp
-          FromPort: '9711'
-          ToPort: '9711'
+          FromPort: 8140
+          ToPort: 8140
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: '9611'
-          ToPort: '9611'
+          FromPort: 9763
+          ToPort: 9763
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: '8140'
-          ToPort: '8140'
+          FromPort: 9443
+          ToPort: 9443
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: '4000'
-          ToPort: '4000'
+          FromPort: 8243
+          ToPort: 8243
           CidrIp: 0.0.0.0/0
-  WSO2BastionInstance:
+        - IpProtocol: tcp
+          FromPort: 8086
+          ToPort: 8086
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 10173
+          ToPort: 10173
+          CidrIp: 0.0.0.0/0
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: abbdb5e8-f28b-4bc6-8b63-da9595b59c4a
+  WSO2UnixInstance:
     Type: 'AWS::EC2::Instance'
-    Properties:
-      DisableApiTermination: 'false'
-      InstanceInitiatedShutdownBehavior: stop
-      ImageId: !FindInMap
-        - WSO2APIMAMIRegionMap
-        - !Ref 'AWS::Region'
-        - Ubuntu1804
-      InstanceType: t2.micro
-      KeyName: !Ref KeyPairName
-      Monitoring: 'false'
-      Tags:
-        - Key: Name
-          Value: WSO2BastionInstance
-      NetworkInterfaces:
-        - DeleteOnTermination: 'true'
-          Description: Primary network interface
-          DeviceIndex: 0
-          SubnetId: !Ref WSO2APIMPublicSubnet1
-          GroupSet:
-            - !Ref BastionSecurityGroup
-  PuppetMaster:
-    Type: 'AWS::EC2::Instance'
+    Condition: 'IsUnix'
     CreationPolicy:
       ResourceSignal:
-        Count: 1
-        Timeout: PT30M
+        Count: '1'
+        Timeout: PT60M
     Properties:
       DisableApiTermination: 'false'
       InstanceInitiatedShutdownBehavior: stop
       ImageId: !FindInMap
-        - WSO2PuppetMasterRegionMap
-        - !Ref 'AWS::Region'
-        - Ubuntu1804
-      InstanceType: !Ref WSO2InstanceType
+        - OperatingSystemAMI
+        - !Ref OperatingSystem
+        - img
+      InstanceType: t2.large
+      KeyName: !Ref KeyPairName
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
+      Monitoring: 'false'
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
             VolumeSize: '50'
             VolumeType: gp2
             DeleteOnTermination: 'true'
-      KeyName: !Ref KeyPairName
-      Monitoring: 'false'
-      Tags:
-        - Key: Name
-          Value: PuppetMasterInstance
-      NetworkInterfaces:
-        - DeleteOnTermination: 'true'
-          Description: Primary network interface
-          DeviceIndex: 0
-          SubnetId: !Ref WSO2APIMPrivateSubnet1
-          GroupSet:
-            - !Ref PuppetMasterSecurityGroup
-      UserData: !Base64
-        'Fn::Join':
-          - |+
-
-          - - '#!/bin/bash'
-            - exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-            - 'export PATH=~/.local/bin:$PATH'
-            - apt-get update
-            - apt-get -y install python-setuptools python-pip
-            - pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
-            - echo "> Set hostname to puppetmaster"
-            - hostname puppetmaster
-            - echo $(hostname) >> /etc/hostname
-            - echo "127.0.0.1 $(hostname)" >> /etc/hosts
-            - export INSTANCEID=$(ec2metadata | grep -m 1 'instance-id:' | awk '{print $2}')
-            - apt-get update
-            - apt install openjdk-8-jre-headless -y
-            - sed -i '/\[main\]/a dns_alt_names=puppetmaster,puppet' /etc/puppet/puppet.conf
-            - sed -i '/\[master\]/a autosign=true' /etc/puppet/puppet.conf
-            - wget -O /etc/puppet/code/environments/production/modules/apim410/templates/carbon-home/repository/conf/deployment.toml.erb 'https://s3.us-east-2.amazonaws.com/apim-3.2.0-ui-testing/deployment.toml.erb'
-            - !Join
-              - ''
-              - - export ProductVersion=
-                - !Ref ProductVersion
-            - service puppetmaster restart
-            - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            - unzip awscliv2.zip
-            - ./aws/install
-            - aws --version
-            - !Sub "aws configure set aws_access_key_id '${AWSAccessKeyId}'"
-            - !Sub "aws configure set aws_secret_access_key '${AWSAccessKeySecret}'"
-            - aws configure set default.region us-east-1
-            - aws s3 cp s3://wum-for-testgrid/staging-config.json /home/ubuntu/staging-config.json
-            - aws s3 cp s3://wum-for-testgrid/staging-wso2-update.sh /home/ubuntu/staging-wso2-update.sh
-            - chmod +x /home/ubuntu/staging-wso2-update.sh
-            - !Sub "/home/ubuntu/staging-wso2-update.sh '${WUMUsername}' '${WUMPassword}' wso2am-${ProductVersion}"
-            - aws s3 cp s3://testgrid-pipeline-logs/shutdownvm/instance-shutdown /etc/init.d/instance-shutdown
-            - !Join
-              - ''
-              - - sed -i "s~replace_by_instance~
-                - "puppetmaster"
-                - ~g" /etc/init.d/instance-shutdown
-            - !Join
-              - ''
-              - - sed -i "s~replace_by_product~
-                - "wso2am"
-                - ~g" /etc/init.d/instance-shutdown
-            - !Join
-              - ''
-              - - sed -i "s~replace_by_version~
-                - !Ref "ProductVersion"
-                - ~g" /etc/init.d/instance-shutdown
-            - !Join
-              - ''
-              - - sed -i "s~replace_by_s3_bucket_location~
-                - !Ref "S3OutputBucketLocation"
-                - "/puppet-master"
-                - ~g" /etc/init.d/instance-shutdown
-            - chmod +x /etc/init.d/instance-shutdown
-            - /lib/systemd/systemd-sysv-install enable instance-shutdown
-            - systemctl restart instance-shutdown
-            - !Join
-              - ''
-              - - sed -i "s/access-key/
-                - !Ref AWSAccessKeyId
-                - /g" /etc/puppet/code/environments/production/modules/apim_common/manifests/params.pp
-            - !Join
-              - ''
-              - - sed -i "s/REGION_NAME/
-                - !Ref "AWS::Region"
-                - /g" /etc/puppet/code/environments/production/modules/apim_common/manifests/params.pp
-            - !Join
-              - ''
-              - - sed -i "s^secretkey^
-                - !Ref AWSAccessKeySecret
-                - ^g" /etc/puppet/code/environments/production/modules/apim_common/manifests/params.pp
-            - !Join
-              - ''
-              - - sed -i "s/CF_ELB_DNS_NAME/
-                - !GetAtt
-                  - WSO2APIMLoadBalancer
-                  - DNSName
-                - >-
-                  /g"
-                  /etc/puppet/code/environments/production/modules/apim410/manifests/params.pp
-            - !Join
-              - ''
-              - - sed -i "s/CF_ELB_DNS_NAME/
-                - !GetAtt
-                  - WSO2APIMLoadBalancer
-                  - DNSName
-                - >-
-                  /g"
-                  /etc/puppet/code/environments/production/modules/apim_common/manifests/params.pp
-            - !Join
-              - ''
-              - - sed -i "s/CF_DB_USERNAME/
-                - !Ref DBUsername
-                - /g" /etc/puppet/code/environments/production/modules/apim_common/manifests/params.pp
-            - !Join
-              - ''
-              - - sed -i "s/CF_DB_PASSWORD/
-                - !Ref DBPassword
-                - /g" /etc/puppet/code/environments/production/modules/apim_common/manifests/params.pp
-            - !Join
-              - ''
-              - - sed -i "s/CF_DBMS/
-                - !Select [0, !Split ["_", !FindInMap [ DBEngineMap, !Ref DB, DBEngine]]]
-                - /g" /etc/puppet/code/environments/production/modules/apim_common/manifests/params.pp
-            - !Join
-              - ''
-              - - sed -i "s/CF_RDS_URL/
-                - !GetAtt
-                  - WSO2APIMDBInstance
-                  - Endpoint.Address
-                - /g" /etc/puppet/code/environments/production/modules/apim_common/manifests/params.pp
-            - export DB_NAME=WSO2AMDB
-            - !Join
-              - ''
-              - - export DB_HOSTNAME=
-                - !GetAtt
-                  - WSO2APIMDBInstance
-                  - Endpoint.Address
-            - !Join
-              - ''
-              - - export DB_PORT=
-                - !GetAtt
-                  - WSO2APIMDBInstance
-                  - Endpoint.Port
-            - !Join
-              - ''
-              - - export DB_USERNAME=
-                - !Ref DBUsername
-            - !Join
-              - ''
-              - - export DB_PASSWORD=
-                - !Ref DBPassword
-            - !Join
-             - ''
-             - - sed -i "s/JDK_TYPE/
-               - !Ref JDK
-               - /g" /etc/puppet/code/environments/production/modules/apim_common/manifests/params.pp
-            - !Join
-              - ''
-              - - sed -i "s/CF_DB_USERNAME/
-                - !Ref DBUsername
-                - /g" /usr/local/bin/provision_db_apim.sh
-            - !Join
-              - ''
-              - - sed -i "s/CF_DB_PASSWORD/
-                - !Ref DBPassword
-                - /g" /usr/local/bin/provision_db_apim.sh
-            - !Join
-              - ''
-              - - sed -i "s/CF_DB_HOST/
-                - !GetAtt
-                  - WSO2APIMDBInstance
-                  - Endpoint.Address
-                - /g" /usr/local/bin/provision_db_apim.sh
-            - !Join
-              - ''
-              - - sed -i "s/CF_DB_PORT/
-                - !GetAtt
-                  - WSO2APIMDBInstance
-                  - Endpoint.Port
-                - /g" /usr/local/bin/provision_db_apim.sh
-            - !Join
-              - ''
-              - - sed -i "s/CF_DBMS_NAME/
-                - !Select [0, !Split ["_", !FindInMap [ DBEngineMap, !Ref DB, DBEngine]]]
-                - /g" /usr/local/bin/provision_db_apim.sh
-            - !Join
-              - ''
-              - - sed -i "s/CF_DBMS_VERSION/
-                - !Select [1, !Split ["_", !FindInMap [ DBEngineMap, !Ref DB, DBEngine]]]
-                - /g" /usr/local/bin/provision_db_apim.sh
-            - !Join
-              - ''
-              - - sed -i "s/CF_PRODUCT_VERSION/
-                - 4.1.0
-                - /g" /usr/local/bin/provision_db_apim.sh
-            - wget -O /home/ubuntu/apim/apim410/apim_oracle_common_db.sql 'https://apim-test-grid.s3.amazonaws.com/4.1.0/apim_oracle_common_db.sql'
-            - wget -O /home/ubuntu/apim/apim410/apim_oracle_user.sql 'https://apim-test-grid.s3.amazonaws.com/4.1.0/apim_oracle_user.sql'
-            - wget -O /home/ubuntu/apim/apim410/apim_oracle_apimgt_db.sql 'https://apim-test-grid.s3.amazonaws.com/4.1.0/apim_oracle_apimgt_db.sql'
-            - bash /usr/local/bin/provision_db_apim.sh
-            - !Sub "/usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource PuppetMaster --region ${AWS::Region}"
-    DependsOn:
-      - WSO2APIMPublicInternetGateway
-      - WSO2APIMVPCInternetGatewayAttachment
-      - WSO2APIMNATGateway
-      - WSO2APIMPrivateSubnet1
-      - WSO2APIMPublicSubnet1
-      - WSO2APIMPublicSubnet2
-      - WSO2APIMPublicRouteTable
-      - WSO2APIMPublicSubnet1RouteTableAssociation
-      - WSO2APIMPublicSubnet2RouteTableAssociation
-      - WSO2APIMPublicRoute
-      - WSO2APIMPrivateSubnet2
-      - WSO2APIMPrivateSubnetRouteTable
-      - WSO2APIMPrivateRoute
-      - WSO2APIMPrivateSubnet1RouteTableAssociation
-      - WSO2APIMPrivateSubnet2RouteTableAssociation
-      - WSO2APIMEIP
-  PuppetMasterSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      VpcId: !Ref WSO2APIMVPC
-      GroupDescription: WSO2 API Manager Security Group
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '8140'
-          ToPort: '8140'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 9200
-          ToPort: 9200
-          CidrIp: 0.0.0.0/0
-  WSO2APIMNode1LaunchConfiguration:
-    Type: 'AWS::AutoScaling::LaunchConfiguration'
-    Properties:
-      ImageId: !FindInMap
-        - WSO2APIMAMIRegionMap
-        - !Ref 'AWS::Region'
-        - !Ref OperatingSystem
-      InstanceType: t2.large
-      BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-            VolumeSize: '20'
-            VolumeType: gp2
-            DeleteOnTermination: 'true'
-      KeyName: !Ref KeyPairName
-      SecurityGroups:
-        - !Ref WSO2APIMSecurityGroup
       UserData: !Base64
         'Fn::Sub': |
-          Content-Type: multipart/mixed; boundary="//"
-          MIME-Version: 1.0
+              #!/bin/bash
 
-          --//
-          Content-Type: text/cloud-config; charset="us-ascii"
-          MIME-Version: 1.0
-          Content-Transfer-Encoding: 7bit
-          Content-Disposition: attachment; filename="cloud-config.txt"
+              exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+              # Echoes all commands before executing.
+              set -o verbose
+              set -o xtrace
 
-          #cloud-config
-          cloud_final_modules:
-          - [scripts-user, always]
+              # Set file limits
+              sysctl -w fs.file-max=2097152
+              sysctl fs.file-nr
+              ulimit -Hn
+              ulimit -Sn
 
-          --//
-          Content-Type: text/x-shellscript; charset="us-ascii"
-          MIME-Version: 1.0
-          Content-Transfer-Encoding: 7bit
-          Content-Disposition: attachment; filename="userdata.txt"
-          #!/bin/bash
-          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-          export PATH=~/.local/bin:$PATH
-          if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
-              export DEBIAN_FRONTEND=noninteractive
-              apt-get update
-              sleep 300
-              killall apt apt-get dpkg
-              dpkg --configure -a
-              apt install -y puppet nfs-common
-              apt install -y python-pip
-              apt install -y unzip zip
-              apt install -y python3-pip
-              pip3 install boto3
-              pip install boto3
-              sed -i '/\[main\]/a server=puppet' /etc/puppet/puppet.conf
-          fi
-          if [[ ${OperatingSystem} == "CentOS7" ]]; then
-              wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-              yum update -y
-              yum install -y epel-release-latest-7.noarch.rpm
-              yum install -y zip unzip nfs-utils
-              yum install -y python-pip
-              pip install boto3
-              rpm -Uvh https://yum.puppetlabs.com/puppet5/puppet5-release-el-7.noarch.rpm
-              yum install -y puppet-agent
-              echo $'[main]\nserver = puppet\ncertname = agent1\nenvironment = production\n\runinterval = 1h' > /etc/puppetlabs/puppet/puppet.conf
-              yum install awscli -y
-              aws configure set aws_access_key_id '${AWSAccessKeyId}'
-              aws configure set aws_secret_access_key '${AWSAccessKeySecret}'
-              aws configure set default.region us-east-1
-          fi
-          pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
-          wget https://s3.amazonaws.com/wso2logarchiever/log_archiver/log_archiver.sh
-          wget --no-check-certificate --no-proxy 'http://wso2-cloudformation-templates.s3.amazonaws.com/private_ip_extractor.py' -P /usr/local/bin/
-          mv log_archiver.sh /usr/lib/
-          export ProductVersion=4.1.0
-          export PuppetmasterIP=${PuppetMaster.PrivateIp}
-          echo "$PuppetmasterIP puppet puppetmaster" >> /etc/hosts
-          service puppet restart
-          mkdir -p /mnt/efs
-          mount -t nfs4 -o nfsvers=4.1 ${WSO2APIMEFSFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs
-          sleep 100
-          export FACTER_profile=apim410
-          if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
-              puppet agent -vt >> /var/log/puppetlog.log
-          fi
-          if [[ ${OperatingSystem} == "CentOS7" ]]; then
-              /opt/puppetlabs/bin/puppet agent -vt >> /var/log/puppetlog.log
-          fi
-          if [[ ${OperatingSystem} == "SUSE12" ]]; then
-              /opt/puppetlabs/puppet/bin/puppet agent -vt >> /var/log/puppetlog.log
-          fi
-          sleep 30
-          if [ ! -d "/mnt/efs/server/synapse-configs" ]; then
-              mkdir -p /mnt/efs/server/synapse-configs
-              cp -r /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server/synapse-configs /mnt/efs
-          fi
-          rm -rf  /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server/synapse-configs
-          ln -s /mnt/efs/server/synapse-configs /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server
+              if [[ ${OperatingSystem} == "Ubuntu" ]]; then
+                  export DEBIAN_FRONTEND=noninteractive
+                  apt-get update
+                  sleep 120
+                  dpkg --configure -a
+                  apt install -y zip
+                  apt install -y python-pip
+                  apt install -y jq
+              fi
+              if [[ ${OperatingSystem} == "CentOS" ]] || [[ ${OperatingSystem} == "RHEL8" ]] || [[ ${OperatingSystem} == "RHEL9" ]] || [[ ${OperatingSystem} == "Rocky" ]]; then
+                yum install -y epel-release zip unzip
+                yum install -y jq
+                dnf update -y
+                dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+                yum -y install wget
+                                
+                export JAVA_HOME=/usr/lib/jvm/jdk-11.0.21_9/
+                export PATH=$JAVA_HOME/bin:$PATH
+                echo "JAVA_HOME is set to $JAVA_HOME" >> /var/log/user-data.log
+                
+                source ~/.bashrc
+      
+                yum -y update
+                yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+  
+                yum -y install git
+              fi
+              if [[ ${OperatingSystem} == "RHEL9" ]] || [[ ${OperatingSystem} == "Rocky" ]]; then
+                pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+              else
+                pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+              fi
+              mkdir -p /opt/testgrid/workspace
+              #So, provided permissions to all the users. Need to fix!
+              sudo chmod 777 -R /opt/testgrid
+              cd /opt/testgrid/workspace
 
-          if [ ! -d "/mnt/efs/server/executionplans" ]; then
-              mkdir -p /mnt/efs/server/executionplans
-              cp -r /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server/executionplans /mnt/efs
-          fi
-          rm -rf  /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server/executionplans
-          ln -s /mnt/efs/server/executionplans /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server
+              source /etc/environment
 
-          if [ ! -d "/mnt/efs/tenants" ]; then
-              mkdir -p /mnt/efs/tenants
-              cp -r /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/tenants /mnt/efs
-          fi
-          rm -rf /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/tenants
-          ln -s /mnt/efs/tenants /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository
-          echo "${WSO2APIMEFSFileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
-          service puppet stop
-          export APIMNODE1IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance1)
-          sed -i "s/tm1.local/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/conf/deployment.toml
-          export APIMNODE2IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance2)
-          aws s3 cp s3://testgrid-pipeline-logs/shutdownvm/instance-shutdown /etc/init.d/instance-shutdown
-          sed -i "s~replace_by_product~wso2am~g" /etc/init.d/instance-shutdown
-          sed -i "s~replace_by_version~${ProductVersion}~g" /etc/init.d/instance-shutdown
-          sed -i "s~replace_by_s3_bucket_location~${S3OutputBucketLocation}/wso2-product-instance~g" /etc/init.d/instance-shutdown
-          chmod +x /etc/init.d/instance-shutdown
-          /lib/systemd/systemd-sysv-install enable instance-shutdown
-          systemctl restart instance-shutdown
-          wget -O /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server/webapps/APIStatusMonitor.war https://github.com/wso2/product-apim/raw/product-scenarios-4.1.0/product-scenarios/scenarios-common/src/test/resources/artifacts/APIStatusMonitor.war
-          wget -O /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server/webapps/jaxrs_basic.war https://github.com/wso2/product-apim/raw/product-scenarios-4.1.0/product-scenarios/scenarios-common/src/test/resources/artifacts/jaxrs_basic.war
-          sed -i "s/tm2.local/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/conf/deployment.toml
-          sed -i "s/OTHERAPIMNODE/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/conf/deployment.toml
-          /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/bin/api-manager.sh start
-          sleep 30
-          if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
-              end=$((SECONDS+1200))
-              while [ $SECONDS -lt $end ] ; do
-                  sleep 10
-                  wget --delete-after --server-response --no-check-certificate "https://localhost:9443/carbon/admin/login.jsp"
-                  if [ $? -eq "0" ] ; then
-                      /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2APIMNode1AutoScalingGroup --region ${AWS::Region}
-                      break
-                  fi
-              done
-          fi
-          if [[ ${OperatingSystem} == "CentOS7" ]]; then
-              end=$((SECONDS+1200))
-              while [ $SECONDS -lt $end ] ; do
-                  sleep 10
-                  wget --delete-after --server-response --no-check-certificate "https://localhost:9443/carbon/admin/login.jsp"
-                  if [ $? -eq "0" ] ; then
-                      /usr/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2APIMNode1AutoScalingGroup --region ${AWS::Region}
-                      break
-                  fi
-              done
-          fi
-          echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile.d/history.sh
-          cat /dev/null > ~/.bash_history && history -c
-    DependsOn:
-      - WSO2APIMSecurityGroup
-      - WSO2APIMLoadBalancer
-      - WSO2APIMVPCInternetGatewayAttachment
-      - PuppetMaster
-  WSO2APIMNode1AutoScalingGroup:
-    Type: 'AWS::AutoScaling::AutoScalingGroup'
-    Properties:
-      LaunchConfigurationName: !Ref WSO2APIMNode1LaunchConfiguration
-      DesiredCapacity: 1
-      MinSize: 1
-      MaxSize: 1
-      TargetGroupARNs:
-        - !Ref WSO2APIMALBTargetGroup
-        - !Ref WSO2APIMALB8243TargetGroup
-      VPCZoneIdentifier:
-        - !Ref WSO2APIMPrivateSubnet1
+              cat /dev/null > ~/.bash_history && history -c
+              ${CustomUserData}
+
+              WORKING_DIR=$(pwd)
+
+              # write property file
+              echo "JDK_TYPE=${JDK}" >> cfn-props.properties
+              #add product pack name to cfn properties
+              echo "REMOTE_PACK_NAME=wso2am-${ProductVersion}" >> cfn-props.properties
+              /usr/local/bin/aws --version
+              /usr/local/bin/aws configure set aws_access_key_id '${AWSAccessKeyId}'
+              /usr/local/bin/aws configure set aws_secret_access_key '${AWSAccessKeySecret}'
+              /usr/local/bin/aws configure set default.region us-east-1
+              /usr/local/bin/aws s3 cp s3://wum-for-testgrid/uat-config.json $WORKING_DIR/uat-config.json
+              echo "Downloading vanilla product wso2am-${ProductVersion} from AWS S3 completed successfully"
+              /usr/local/bin/aws s3 cp s3://wum-for-testgrid/packs/wso2am-${ProductVersion}.zip $WORKING_DIR
+              if [[ ${OperatingSystem} == "RHEL8" ]] || [[ ${OperatingSystem} == "RHEL9" ]] || [[ ${OperatingSystem} == "SUSE" ]] || [[ ${OperatingSystem} == "Rocky" ]]; then
+                alternatives --set python /usr/bin/python2
+              fi
+
+              aws s3 cp s3://apim-ui-testing/ui-staging-wso2-update.sh /opt/testgrid/workspace/staging-wso2-update.sh
+              chmod +x /opt/testgrid/workspace/staging-wso2-update.sh
+
+              /opt/testgrid/workspace/staging-wso2-update.sh ${WUMUsername} ${WUMPassword} wso2am-${ProductVersion}
+  
+              aws s3 cp s3://apim-ui-testing/instance-shutdown /etc/init.d/instance-shutdown
+              sed -i "s~replace_by_product~wso2am~g" /etc/init.d/instance-shutdown
+              sed -i "s~replace_by_version~${ProductVersion}~g" /etc/init.d/instance-shutdown
+              sed -i "s~replace_by_s3_bucket_location~${S3OutputBucketLocation}/wso2-product-instance~g" /etc/init.d/instance-shutdown
+              chmod +x /etc/init.d/instance-shutdown
+
+              cat <<EOF > /etc/systemd/system/instance-shutdown.service
+              [Unit]
+              Description=Instance Shutdown Service
+              Before=shutdown.target reboot.target halt.target
+              Requires=network-online.target network.target
+              
+              [Service]
+              KillMode=none
+              Type=oneshot
+              ExecStart=/bin/true
+              ExecStop=/etc/init.d/instance-shutdown
+              RemainAfterExit=yes
+              
+              [Install]
+              WantedBy=multi-user.target
+              EOF
+    
+              # Reload systemd to recognize the new service
+              systemctl daemon-reload
+    
+              # Enable the instance-shutdown service to run at startup
+              systemctl enable instance-shutdown
+    
+              # Start the instance-shutdown service
+              systemctl start instance-shutdown
+              
+              # PUBLIC_DNS=$(curl http://169.254.169.254/latest/meta-data/public-hostname)
+              # sed -i "s/localhost/$PUBLIC_DNS/g" wso2am-${ProductVersion}/repository/conf/deployment.toml
+
+              PRIVATE_IP=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
+              sed -i "s/localhost/$PRIVATE_IP/g" wso2am-${ProductVersion}/repository/conf/deployment.toml
+              
+              DEPLOYMENT_TOML="wso2am-${ProductVersion}/repository/conf/deployment.toml"
+          
+              # Add application sharing configuration
+              echo "" >> "$DEPLOYMENT_TOML"
+              echo "" >> "$DEPLOYMENT_TOML"
+              echo "[apim.devportal]" >> "$DEPLOYMENT_TOML"
+              echo "enable_application_sharing = true" >> "$DEPLOYMENT_TOML"
+              echo 'application_sharing_type = "default"' >> "$DEPLOYMENT_TOML"
+
+              wso2am-${ProductVersion}/bin/api-manager.sh start
+              sleep 60
+              pwd
+              echo ${OperatingSystem}
+              if [[ ${OperatingSystem} == "Ubuntu" ]]; then
+                /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2UnixInstance --region ${AWS::Region}
+              fi
+              if [[ ${OperatingSystem} == "CentOS" ]]; then
+                /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2UnixInstance --region ${AWS::Region}
+              fi
+              if [[ ${OperatingSystem} == "RHEL8" ]] || [[ ${OperatingSystem} == "RHEL9" ]] || [[ ${OperatingSystem} == "Rocky" ]]; then
+                /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2UnixInstance --region ${AWS::Region}
+              fi
       Tags:
         - Key: Name
-          Value: WSO2APIMInstance1
-          PropagateAtLaunch: 'true'
-        - Key: cluster
-          Value: apim
-          PropagateAtLaunch: 'true'
-    CreationPolicy:
-      ResourceSignal:
-        Count: 1
-        Timeout: PT30M
-    UpdatePolicy:
-      AutoScalingRollingUpdate:
-        MaxBatchSize: '2'
-        MinInstancesInService: '1'
-        PauseTime: PT10M
-        SuspendProcesses:
-          - AlarmNotification
-        WaitOnResourceSignals: true
-    DependsOn:
-      - WSO2APIMLoadBalancer
-  WSO2APIMNode2LaunchConfiguration:
-    Type: 'AWS::AutoScaling::LaunchConfiguration'
-    Properties:
-      ImageId: !FindInMap
-        - WSO2APIMAMIRegionMap
-        - !Ref 'AWS::Region'
-        - !Ref OperatingSystem
-      InstanceType: t2.large
-      BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-            VolumeSize: '20'
-            VolumeType: gp2
-            DeleteOnTermination: 'true'
-      KeyName: !Ref KeyPairName
+          Value: !Join
+            - ''
+            - - 'ui-intg-test__'
+              - !Ref OperatingSystem
+              - '__'
+              - !Ref JDK
       SecurityGroups:
-        - !Ref WSO2APIMSecurityGroup
-      UserData: !Base64
-        'Fn::Sub': |
-          Content-Type: multipart/mixed; boundary="//"
-          MIME-Version: 1.0
-
-          --//
-          Content-Type: text/cloud-config; charset="us-ascii"
-          MIME-Version: 1.0
-          Content-Transfer-Encoding: 7bit
-          Content-Disposition: attachment; filename="cloud-config.txt"
-
-          #cloud-config
-          cloud_final_modules:
-          - [scripts-user, always]
-
-          --//
-          Content-Type: text/x-shellscript; charset="us-ascii"
-          MIME-Version: 1.0
-          Content-Transfer-Encoding: 7bit
-          Content-Disposition: attachment; filename="userdata.txt"
-          #!/bin/bash
-          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-          export PATH=~/.local/bin:$PATH
-          if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
-              export DEBIAN_FRONTEND=noninteractive
-              apt-get update
-              sleep 300
-              killall apt apt-get dpkg
-              dpkg --configure -a
-              apt install -y puppet nfs-common
-              apt install -y python-pip
-              apt install -y unzip zip
-              apt install -y python3-pip
-              pip3 install boto3
-              pip install boto3
-              sed -i '/\[main\]/a server=puppet' /etc/puppet/puppet.conf
-          fi
-          if [[ ${OperatingSystem} == "CentOS7" ]]; then
-              wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-              yum update -y
-              yum install -y epel-release-latest-7.noarch.rpm
-              yum install -y zip unzip nfs-utils
-              yum install -y python-pip
-              pip install boto3
-              rpm -Uvh https://yum.puppetlabs.com/puppet5/puppet5-release-el-7.noarch.rpm
-              yum install -y puppet-agent
-              echo $'[main]\nserver = puppet\ncertname = agent2\nenvironment = production\n\runinterval = 1h' > /etc/puppetlabs/puppet/puppet.conf
-              yum install awscli -y
-              aws configure set aws_access_key_id '${AWSAccessKeyId}'
-              aws configure set aws_secret_access_key '${AWSAccessKeySecret}'
-              aws configure set default.region us-east-1
-          fi
-          pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
-          wget https://s3.amazonaws.com/wso2logarchiever/log_archiver/log_archiver.sh
-          wget --no-check-certificate --no-proxy 'http://wso2-cloudformation-templates.s3.amazonaws.com/private_ip_extractor.py' -P /usr/local/bin/
-          mv log_archiver.sh /usr/lib/
-          export ProductVersion=4.1.0
-          export PuppetmasterIP=${PuppetMaster.PrivateIp}
-          echo "$PuppetmasterIP puppet puppetmaster" >> /etc/hosts
-          service puppet restart
-          mkdir -p /mnt/efs
-          mount -t nfs4 -o nfsvers=4.1 ${WSO2APIMEFSFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs
-          sleep 110
-          export FACTER_profile=apim410
-          if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
-              puppet agent -vt >> /var/log/puppetlog.log
-          fi
-          if [[ ${OperatingSystem} == "CentOS7" ]]; then
-              /opt/puppetlabs/bin/puppet agent -vt >> /var/log/puppetlog.log
-          fi
-          if [[ ${OperatingSystem} == "SUSE12" ]]; then
-              /opt/puppetlabs/puppet/bin/puppet agent -vt >> /var/log/puppetlog.log
-          fi
-          sleep 30
-          if [ ! -d "/mnt/efs/server/synapse-configs" ]; then
-              mkdir -p /mnt/efs/server/synapse-configs
-              cp -r /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server/synapse-configs /mnt/efs
-          fi
-          rm -rf  /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server/synapse-configs
-          ln -s /mnt/efs/server/synapse-configs /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server
-
-          if [ ! -d "/mnt/efs/server/executionplans" ]; then
-              mkdir -p /mnt/efs/server/executionplans
-              cp -r /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server/executionplans /mnt/efs
-          fi
-          rm -rf  /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server/executionplans
-          ln -s /mnt/efs/server/executionplans /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server
-
-          if [ ! -d "/mnt/efs/tenants" ]; then
-              mkdir -p /mnt/efs/tenants
-              cp -r /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/tenants /mnt/efs
-          fi
-          rm -rf /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/tenants
-          ln -s /mnt/efs/tenants /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository
-          echo "${WSO2APIMEFSFileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
-          service puppet stop
-          export APIMNODE1IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance1)
-          sed -i "s/tm1.local/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/conf/deployment.toml
-          sed -i "s/OTHERAPIMNODE/$APIMNODE1IP/g" /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/conf/deployment.toml
-          export APIMNODE2IP=$(python /usr/local/bin/private_ip_extractor.py ${AWS::Region} ${AWSAccessKeyId} ${AWSAccessKeySecret} WSO2APIMInstance2)
-          aws s3 cp s3://testgrid-pipeline-logs/shutdownvm/instance-shutdown /etc/init.d/instance-shutdown
-          sed -i "s~replace_by_product~wso2am~g" /etc/init.d/instance-shutdown
-          sed -i "s~replace_by_version~${ProductVersion}~g" /etc/init.d/instance-shutdown
-          sed -i "s~replace_by_s3_bucket_location~${S3OutputBucketLocation}/wso2-product-instance~g" /etc/init.d/instance-shutdown
-          chmod +x /etc/init.d/instance-shutdown
-          /lib/systemd/systemd-sysv-install enable instance-shutdown
-          systemctl restart instance-shutdown
-          wget -O /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server/webapps/APIStatusMonitor.war https://github.com/wso2/product-apim/raw/product-scenarios-4.1.0/product-scenarios/scenarios-common/src/test/resources/artifacts/APIStatusMonitor.war
-          wget -O /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/deployment/server/webapps/jaxrs_basic.war https://github.com/wso2/product-apim/raw/product-scenarios-4.1.0/product-scenarios/scenarios-common/src/test/resources/artifacts/jaxrs_basic.war
-          sed -i "s/tm2.local/$APIMNODE2IP/g" /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/repository/conf/deployment.toml
-          sleep 120
-          /usr/lib/wso2/wso2am/4.1.0/wso2am-4.1.0/bin/api-manager.sh start
-          sleep 30
-          if [[ ${OperatingSystem} == "Ubuntu1804" ]]; then
-              end=$((SECONDS+1200))
-              while [ $SECONDS -lt $end ] ; do
-                  sleep 10
-                  wget --delete-after --server-response --no-check-certificate "https://localhost:9443/carbon/admin/login.jsp"
-                  if [ $? -eq "0" ] ; then
-                      /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2APIMNode2AutoScalingGroup --region ${AWS::Region}
-                      break
-                  fi
-              done
-          fi
-          if [[ ${OperatingSystem} == "CentOS7" ]]; then
-              end=$((SECONDS+1200))
-              while [ $SECONDS -lt $end ] ; do
-                  sleep 10
-                  wget --delete-after --server-response --no-check-certificate "https://localhost:9443/carbon/admin/login.jsp"
-                  if [ $? -eq "0" ] ; then
-                      /usr/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2APIMNode2AutoScalingGroup --region ${AWS::Region}
-                      break
-                  fi
-              done
-          fi
-          echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile.d/history.sh
-          cat /dev/null > ~/.bash_history && history -c
-    DependsOn:
-      - WSO2APIMSecurityGroup
-      - WSO2APIMLoadBalancer
-      - WSO2APIMVPCInternetGatewayAttachment
-      - PuppetMaster
-  WSO2APIMNode2AutoScalingGroup:
-    Type: 'AWS::AutoScaling::AutoScalingGroup'
-    Properties:
-      LaunchConfigurationName: !Ref WSO2APIMNode2LaunchConfiguration
-      DesiredCapacity: 1
-      MinSize: 1
-      MaxSize: 1
-      TargetGroupARNs:
-        - !Ref WSO2APIMALBTargetGroup
-        - !Ref WSO2APIMALB8243TargetGroup
-      VPCZoneIdentifier:
-        - !Ref WSO2APIMPrivateSubnet2
-      Tags:
-        - Key: Name
-          Value: WSO2APIMInstance2
-          PropagateAtLaunch: 'true'
-    CreationPolicy:
-      ResourceSignal:
-        Count: 1
-        Timeout: PT30M
-    UpdatePolicy:
-      AutoScalingRollingUpdate:
-        MaxBatchSize: '2'
-        MinInstancesInService: '1'
-        PauseTime: PT10M
-        SuspendProcesses:
-          - AlarmNotification
-        WaitOnResourceSignals: true
-    DependsOn:
-      - WSO2APIMLoadBalancer
-  WSO2APIMLoadBalancerSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      VpcId: !Ref WSO2APIMVPC
-      GroupDescription: WSO2 APIM ELB Security Group
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: '9763'
-          ToPort: '9763'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '443'
-          ToPort: '443'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '9443'
-          ToPort: '9443'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '8243'
-          ToPort: '8243'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '8280'
-          ToPort: '8280'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '4000'
-          ToPort: '4000'
-          CidrIp: 0.0.0.0/0
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: '9763'
-          ToPort: '9763'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '9443'
-          ToPort: '9443'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '443'
-          ToPort: '443'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '8243'
-          ToPort: '8243'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '8280'
-          ToPort: '8280'
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: '4000'
-          ToPort: '4000'
-          CidrIp: 0.0.0.0/0
-  WSO2APIMLoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Name: !Join [ '-', [ 'APIM', !Ref 'UniqueIdentifier' ] ]
-      Scheme: internet-facing
-      Subnets:
-        - !Ref WSO2APIMPublicSubnet1
-        - !Ref WSO2APIMPublicSubnet2
-      SecurityGroups:
-        - !Ref WSO2APIMLoadBalancerSecurityGroup
-  WSO2APIMALBTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      HealthCheckIntervalSeconds: 10
-      HealthCheckProtocol: HTTPS
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 4
-      HealthCheckPath: /carbon/admin/login.jsp
-      HealthCheckPort: 9443
-      Matcher:
-        HttpCode: 200
-      Name: !Join [ '-', [ 'apim-carbon-9443', !Ref 'UniqueIdentifier', '1' ] ]
-      Port: 9443
-      Protocol: HTTPS
-      TargetGroupAttributes:
-      - Key: deregistration_delay.timeout_seconds
-        Value: '20'
-      - Key: stickiness.enabled
-        Value: 'true'
-      UnhealthyThresholdCount: 3
-      VpcId:
-        Ref: WSO2APIMVPC
-      Tags:
-      - Key: Name
-        Value: apim
-  WSO2APIMALB8243TargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      HealthCheckIntervalSeconds: 10
-      HealthCheckProtocol: HTTPS
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 4
-      HealthCheckPath: /services/Version
-      HealthCheckPort: 9443
-      Matcher:
-        HttpCode: 200
-      Name: !Join [ '-', [ 'apim-carbon-9443', !Ref 'UniqueIdentifier', '2' ] ]
-      Port: 9443
-      Protocol: HTTPS
-      TargetGroupAttributes:
-      - Key: deregistration_delay.timeout_seconds
-        Value: '20'
-      - Key: stickiness.enabled
-        Value: 'true'
-      UnhealthyThresholdCount: 3
-      VpcId:
-        Ref: WSO2APIMVPC
-      Tags:
-      - Key: Name
-        Value: apim
-  WSO2APIMALB443Listener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref WSO2APIMALBTargetGroup
-      Certificates:
-        - CertificateArn: !Join
-          - ''
-          - - 'arn:aws:iam::'
-            - !Ref 'AWS::AccountId'
-            - ':server-certificate'
-            - /
-            - !Ref CertificateName
-      LoadBalancerArn: !Ref WSO2APIMLoadBalancer
-      Port: 443
-      Protocol: HTTPS
-      SslPolicy: ELBSecurityPolicy-TLS-1-1-2017-01
-    DependsOn:
-      - WSO2APIMLoadBalancerSecurityGroup
-  WSO2APIMALB8243Listener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref WSO2APIMALB8243TargetGroup
-      Certificates:
-        - CertificateArn: !Join
-          - ''
-          - - 'arn:aws:iam::'
-            - !Ref 'AWS::AccountId'
-            - ':server-certificate'
-            - /
-            - !Ref CertificateName
-      LoadBalancerArn: !Ref WSO2APIMLoadBalancer
-      Port: 8243
-      Protocol: HTTPS
-      SslPolicy: ELBSecurityPolicy-TLS-1-1-2017-01
-    DependsOn:
-      - WSO2APIMLoadBalancerSecurityGroup
-  WSO2APIMALB9443Listener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref WSO2APIMALBTargetGroup
-      Certificates:
-        - CertificateArn: !Join
-          - ''
-          - - 'arn:aws:iam::'
-            - !Ref 'AWS::AccountId'
-            - ':server-certificate'
-            - /
-            - !Ref CertificateName
-      LoadBalancerArn: !Ref WSO2APIMLoadBalancer
-      Port: 9443
-      Protocol: HTTPS
-      SslPolicy: ELBSecurityPolicy-TLS-1-1-2017-01
-    DependsOn:
-      - WSO2APIMLoadBalancerSecurityGroup
+        - !Ref WSO2InstanceSecurityGroup
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 8f512cce-69ee-45de-87ab-5aedd2a93d50
+      "AWS::CloudFormation::Init" : {
+          "config" : {
+              "packages" : {
+                  "apt" : {
+                    }
+                },
+               "sources" : {
+                },
+               "files" : {
+               }
+          }
+       }
+  WSO2WindowsInstance:
+      Type: 'AWS::EC2::Instance'
+      Condition: 'IsWindows'
+      Properties:
+        DisableApiTermination: 'false'
+        InstanceInitiatedShutdownBehavior: stop
+        ImageId: FindInMap
+          - OperatingSystemAMI
+          - !Ref OperatingSystem
+          - img
+        InstanceType: !Ref WSO2InstanceType
+        KeyName: !Ref KeyPairName
+        Monitoring: 'false'
+        "BlockDeviceMappings" : [
+           {
+              "DeviceName" : "/dev/sda1",
+              "Ebs" : { "VolumeSize" : "100" }
+           },
+        ]
+        UserData:
+          !Base64
+          'Fn::Sub': |
+            <powershell>
+            [Environment]::SetEnvironmentVariable("JAVA_HOME", "$Env:${JDK}", "Machine")
+            ${CustomUserData}
+            </powershell>
+            <persist>true</persist>
+        Tags:
+          - Key: Name
+            Value: !Join
+              - ''
+              - - 'ui-intg-test__'
+                - !Ref OperatingSystem
+                - '__'
+                - !Ref JDK
+        SecurityGroups:
+          - !Ref WSO2InstanceSecurityGroup
+      Metadata:
+        'AWS::CloudFormation::Designer':
+          id: 8f512cce-69ee-45de-87ab-5aedd2a93d50
+        "AWS::CloudFormation::Init" : {
+            "config" : {
+                "packages" : {
+                    "apt" : {
+                      }
+                  },
+                 "sources" : {
+                  },
+                 "files" : {
+                 }
+            }
+         }
 Outputs:
-  CarbonServerUrl:
-    Value: !Join
-      - ''
-      - - 'https://'
-        - !GetAtt
-          - WSO2APIMLoadBalancer
-          - DNSName
-        - '/services/'
-    Description: APIM service carbon URL
-  MgtConsoleUrl:
-    Value: !Join
-      - ''
-      - - 'https://'
-        - !GetAtt
-          - WSO2APIMLoadBalancer
-          - DNSName
-        - '/carbon'
-    Description: APIM service carbon URL
-  PublisherUrl:
-    Value: !Join
-      - ''
-      - - 'https://'
-        - !GetAtt
-          - WSO2APIMLoadBalancer
-          - DNSName
-        - '/publisher'
-    Description: APIM service publisher URL
-  StoreUrl:
-    Value: !Join
-      - ''
-      - - 'https://'
-        - !GetAtt
-          - WSO2APIMLoadBalancer
-          - DNSName
-        - '/store'
-    Description: APIM service store URL
-  AdminUrl:
-    Value: !Join
-      - ''
-      - - 'https://'
-        - !GetAtt
-          - WSO2APIMLoadBalancer
-          - DNSName
-        - '/admin'
-    Description: APIM service admin URL
-  KeyManagerUrl:
-    Value: !Join
-      - ''
-      - - 'https://'
-        - !GetAtt
-          - WSO2APIMLoadBalancer
-          - DNSName
-        - '/services/'
-    Description: APIM keymanager service admin URL
+  WSO2MgtConsoleURL:
+    Value: !If [IsUnix, !Sub 'https://${WSO2UnixInstance.PublicDnsName}:9443/carbon', !If [IsWindows, !Sub 'https://${WSO2WindowsInstance.PublicDnsName}:9443/carbon', !Ref 'AWS::NoValue']]
+    Description: Access URL of the Management Console
+  WSO2PublicIP:
+    Value: !If [IsUnix, !Sub '${WSO2UnixInstance.PublicIp}', !If [IsWindows, !Sub '${WSO2WindowsInstance.PublicIp}', !Ref 'AWS::NoValue']]
+    Description: Private IP of the WSO2 Product Instance
+  WSO2InstanceName:
+    Value: !If [IsUnix, !Sub 'https://${WSO2UnixInstance.PublicDnsName}', !If [IsWindows, !Sub 'https://${WSO2WindowsInstance.PublicDnsName}', !Ref 'AWS::NoValue']]
+    Description: Instance DNS Name
+  OperatingSystem:
+    Value: !Ref OperatingSystem
+  WSO2InstanceId:
+    Value: !If [IsUnix, !Ref WSO2UnixInstance, !If [IsWindows, !Ref WSO2WindowsInstance, !Ref 'AWS::NoValue']]
   GatewayHttpsUrl:
     Value: !Join
       - ''
       - - 'https://'
-        - !GetAtt
-          - WSO2APIMLoadBalancer
-          - DNSName
-        - ':9443'
-    Description: APIM HTTPS Gateway endpoint
-  GatewayHttpUrl:
-    Value: !Join
-      - ''
-      - - 'http://'
-        - !GetAtt
-          - WSO2APIMLoadBalancer
-          - DNSName
-        - ':8280'
-    Description: APIM HTTP Gateway endpoint
-Parameters:
-  AWSAccessKeyId:
-    Type: String
-  AWSAccessKeySecret:
-    Type: String
-  KeyPairName:
-    Description: >-
-      The private key used to log in to instances through SSH
-    Type: 'AWS::EC2::KeyPair::KeyName'
-  CertificateName:
-    Description: A valid SSL certificate used for HTTPS
-    Type: String
-    MinLength: 1
-  WSO2InstanceType:
-    Type: String
-    Default: t2.medium
-    AllowedValues:
-      - t2.medium
-      - t2.large
-      - t2.xlarge
-      - t2.2xlarge
-      - m3.medium
-      - m3.large
-      - m3.xlarge
-      - m3.2xlarge
-      - m4.large
-    ConstraintDescription: Must be a valid EC2 instance type
-  JDK:
-    Type: String
-    Default: "OPEN_JDK8"
-    AllowedValues:
-      - "OPEN_JDK8"
-      - "ORACLE_JDK8"
-      - "ADOPT_OPEN_JDK11"
-  ProductVersion:
-    Type: String
-    Default: 4.1.0
-    AllowedValues:
-      - 4.1.0
-  WUMPassword:
-    Type: String
-    Default: ""
-    NoEcho: true
-  WUMUsername:
-    Type: String
-    Default: ""
-  UniqueIdentifier:
-    Type: String
-    Default: ""
-  S3OutputBucketLocation:
-    Type: String
-    Default: ""
-  DBUsername:
-    Type: String
-    MinLength: 4
-    AllowedPattern: '[A-Za-z0-9\-]+'
-  DBPassword:
-    Type: String
-    MinLength: 8
-    NoEcho: true
-  DBAllocationStorage:
-    Description: Provide storage size in Gigabytes
-    Type: Number
-    Default: 20
-  OperatingSystem:
-    Type: String
-    Default: Ubuntu1804
-    AllowedValues:
-     - Ubuntu1804
-     - CentOS7
-     - SUSE12
-  DBInstanceType:
-    Description: If the selected DB Engine is "SQL Server", please use "db.m4.large" as instance type
-    Type: String
-    Default: db.t2.medium
-    AllowedValues:
-      - db.t2.medium
-      - db.t2.large
-      - db.t2.xlarge
-      - db.t2.2xlarge
-      - db.m3.medium
-      - db.m3.large
-      - db.m3.xlarge
-      - db.m3.2xlarge
-      - db.m4.large
-      - db.m5.large
-  DB:
-    Type: String
-    Default: MySQL-5.7
-    AllowedValues:
-      - MySQL-5.7
-      - Postgres-13.6
-      - Oracle-SE2-19.0
-      - Oracle-SE2-12.1
-      - SQLServer-SE-13.00
-      - SQLServer-SE-14.00
-      - SQLServer-SE-15.00
-Mappings:
-  WSO2PuppetMasterRegionMap:
-    us-east-1:
-       Ubuntu1804: ami-000e4b3b00e2ee993
-    us-east-2:
-       Ubuntu1804: ami-07930486ea9953c9a
-  WSO2APIMAMIRegionMap:
-    us-east-1:
-      CentOS7: ami-09d4e63ccc46083c7
-      Ubuntu1804: ami-02a2048d0e4afcd10
-    us-east-2:
-      CentOS7: ami-009ac95229cc07041
-      Ubuntu1804: ami-0a1af21a7b34de8f7
-  DBEngineMap:
-    MySQL-5.7:
-      DBEngine: "mysql_5.7"
-    Postgres-13.6:
-      DBEngine: "postgres_13.6"
-    SQLServer-SE-13.00:
-      DBEngine: "sqlserver-se_13.00"
-    SQLServer-SE-14.00:
-      DBEngine: "sqlserver-se_14.00"
-    SQLServer-SE-15.00:
-      DBEngine: "sqlserver-se_15.00"
-    Oracle-SE2-19.0:
-      DBEngine: "oracle-se2_19.0.0.0.ru-2019-10.rur-2019-10.r1"
-    Oracle-SE2-12.1:
-      DBEngine: "oracle-se2_12.1"
-Conditions:
-  UseSQLServerDB: !Equals [sqlserver-se, !Select [0, !Split ["_", !FindInMap [ DBEngineMap, !Ref DB, DBEngine]]]]
-  UseLicensedVersion: !Or [ !Equals [sqlserver, !Select [0, !Split ["-", !FindInMap [ DBEngineMap, !Ref DB, DBEngine]]]], !Equals [oracle, !Select [0, !Split ["-", !FindInMap [ DBEngineMap, !Ref DB, DBEngine]]]] ]
+        - !GetAtt 
+          - WSO2UnixInstance
+          - PrivateIp
+        - ':8243'
+    Description: WSO2 Unix Instance HTTPS URL
+Metadata:
+  'AWS::CloudFormation::Designer':
+    abbdb5e8-f28b-4bc6-8b63-da9595b59c4a:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 60
+        'y': 90
+      z: 1
+      embeds: []
+    d0dcc88f-97f7-4d80-901a-f746d372a295:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -80
+        'y': 210
+      z: 1
+      embeds: []
+    5352b4e9-46ed-4a23-8bdc-bafc3666cbbd:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 60
+        'y': 210
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - d0dcc88f-97f7-4d80-901a-f746d372a295
+    8f512cce-69ee-45de-87ab-5aedd2a93d50:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 180
+        'y': 210
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - abbdb5e8-f28b-4bc6-8b63-da9595b59c4a
+      dependson:
+        - 5352b4e9-46ed-4a23-8bdc-bafc3666cbbd
