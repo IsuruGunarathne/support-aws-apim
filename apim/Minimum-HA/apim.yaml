@@ -201,10 +201,18 @@ Resources:
                 dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
                 yum -y install wget
                                 
-                export JAVA_HOME=/usr/lib/jvm/jdk-11.0.21_9/
+                # Install JDK 21 (required for APIM 4.7+ per official docs)
+                mkdir -p /usr/lib/jvm
+                cd /tmp
+                wget -q https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.2%2B13/OpenJDK21U-jdk_x64_linux_hotspot_21.0.2_13.tar.gz
+                tar -xzf OpenJDK21U-jdk_x64_linux_hotspot_21.0.2_13.tar.gz -C /usr/lib/jvm/
+                export JAVA_HOME=/usr/lib/jvm/jdk-21.0.2+13
                 export PATH=$JAVA_HOME/bin:$PATH
+                echo "JAVA_HOME=$JAVA_HOME" >> /etc/environment
+                echo "PATH=$JAVA_HOME/bin:\$PATH" >> /etc/environment
+                java -version 2>&1 | tee -a /var/log/user-data.log
                 echo "JAVA_HOME is set to $JAVA_HOME" >> /var/log/user-data.log
-                
+
                 source ~/.bashrc
       
                 yum -y update
