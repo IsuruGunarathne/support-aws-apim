@@ -57,7 +57,7 @@ Parameters:
     Description: Enter product name
   ProductVersion:
     Type: String
-    Default: 4.6.0
+    Default: 4.7.0
     Description: Enter product version
   OperatingSystem:
     Type: String
