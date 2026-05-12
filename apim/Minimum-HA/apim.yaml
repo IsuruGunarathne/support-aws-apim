@@ -158,7 +158,9 @@ Resources:
         - OperatingSystemAMI
         - !Ref OperatingSystem
         - img
-      InstanceType: t2.large
+      InstanceType: t3.large
+      CreditSpecification:
+        CPUCredits: unlimited
       KeyName: !Ref KeyPairName
       AvailabilityZone: !Select
         - '0'
