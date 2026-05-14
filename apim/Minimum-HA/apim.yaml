@@ -285,13 +285,88 @@ Resources:
     
               # Reload systemd to recognize the new service
               systemctl daemon-reload
-    
+
               # Enable the instance-shutdown service to run at startup
               systemctl enable instance-shutdown
-    
+
               # Start the instance-shutdown service
               systemctl start instance-shutdown
-              
+
+              # ----- Dump carbon logs to S3 on EC2 shutdown -----
+              # The Jenkins agent has no SSH key for this EC2 (KeyPairName=deployment-prod
+              # whose private half is not in the agent's reachable credential store), so
+              # the only way to ship the per-deployment WSO2 server logs back to the
+              # pipeline is to push them from the EC2 itself. testgrid-jenkins-library's
+              # post block fetches everything under ${S3OutputBucketLocation}/, so the
+              # tarball lands in build-<N>/.../carbon-logs/ automatically.
+              #
+              # HEREDOC notes:
+              #   - The YAML body is wrapped in Fn::Sub, so CFN substitutes ${VAR}
+              #     references (only ${ProductVersion}, ${S3OutputBucketLocation} and
+              #     ${!literal} escapes need to interest us — anything else ${...} would
+              #     be a CFN error).
+              #   - We use <<'EOF' (quoted) so bash writes the contents to the script file
+              #     LITERALLY without interpolating $INSTANCE_ID or $(curl ...) during
+              #     user-data exec — those need to be evaluated when the script later runs
+              #     at shutdown, not now.
+              #   - For bash variables the script defines and uses, write ${!VAR} so CFN
+              #     emits the literal ${VAR} into the script.
+              cat <<'EOF' > /usr/local/bin/dump-carbon-logs.sh
+              #!/bin/bash
+              INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo unknown)
+              WSO2_LOG_DIR="/opt/testgrid/workspace/wso2am-${!PRODUCT_VERSION}/repository/logs"
+              S3_DEST="s3://${!S3_OUT}/carbon-logs"
+              TARBALL="/tmp/${!INSTANCE_ID}-carbon-logs.tar.gz"
+
+              echo "[dump-carbon-logs] starting for ${!INSTANCE_ID}"
+
+              if [ ! -d "${!WSO2_LOG_DIR}" ]; then
+                  echo "[dump-carbon-logs] ${!WSO2_LOG_DIR} not found - skipping"
+                  exit 0
+              fi
+
+              if ! ( cd "${!WSO2_LOG_DIR}/.." && tar -czf "${!TARBALL}" logs ); then
+                  echo "[dump-carbon-logs] tar failed"
+                  exit 0
+              fi
+
+              if ! /usr/local/bin/aws s3 cp "${!TARBALL}" "${!S3_DEST}/${!INSTANCE_ID}-carbon-logs.tar.gz" --quiet; then
+                  echo "[dump-carbon-logs] s3 upload failed"
+                  exit 0
+              fi
+
+              echo "[dump-carbon-logs] uploaded to ${!S3_DEST}/${!INSTANCE_ID}-carbon-logs.tar.gz"
+              EOF
+              chmod +x /usr/local/bin/dump-carbon-logs.sh
+
+              # CFN params can't reach inside a quoted HEREDOC, so the script reads
+              # PRODUCT_VERSION and S3_OUT from the environment. Pass them in via the
+              # systemd unit so the script stays generic.
+              cat <<EOF > /etc/systemd/system/dump-carbon-logs.service
+              [Unit]
+              Description=Dump WSO2 carbon logs to S3 before shutdown
+              Before=shutdown.target reboot.target halt.target
+              Requires=network-online.target network.target
+
+              [Service]
+              KillMode=none
+              Type=oneshot
+              Environment="PRODUCT_VERSION=${ProductVersion}"
+              Environment="S3_OUT=${S3OutputBucketLocation}"
+              ExecStart=/bin/true
+              ExecStop=/usr/local/bin/dump-carbon-logs.sh
+              RemainAfterExit=yes
+              TimeoutStopSec=120
+
+              [Install]
+              WantedBy=multi-user.target
+              EOF
+
+              systemctl daemon-reload
+              systemctl enable dump-carbon-logs.service
+              systemctl start dump-carbon-logs.service
+              # ----- End carbon log dump setup -----
+
               # PUBLIC_DNS=$(curl http://169.254.169.254/latest/meta-data/public-hostname)
               # sed -i "s/localhost/$PUBLIC_DNS/g" wso2am-${ProductVersion}/repository/conf/deployment.toml
 
