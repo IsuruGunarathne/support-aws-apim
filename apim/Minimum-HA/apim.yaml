@@ -301,16 +301,17 @@ Resources:
               # tarball lands in build-<N>/.../carbon-logs/ automatically.
               #
               # HEREDOC notes:
-              #   - The YAML body is wrapped in Fn::Sub, so CFN substitutes ${VAR}
-              #     references (only ${ProductVersion}, ${S3OutputBucketLocation} and
-              #     ${!literal} escapes need to interest us — anything else ${...} would
-              #     be a CFN error).
-              #   - We use <<'EOF' (quoted) so bash writes the contents to the script file
-              #     LITERALLY without interpolating $INSTANCE_ID or $(curl ...) during
-              #     user-data exec — those need to be evaluated when the script later runs
-              #     at shutdown, not now.
-              #   - For bash variables the script defines and uses, write ${!VAR} so CFN
-              #     emits the literal ${VAR} into the script.
+              #   - The YAML body is wrapped in Fn::Sub, so CFN substitutes
+              #     parameter references (ProductVersion, S3OutputBucketLocation).
+              #     Anything else with the same syntax that doesn't resolve to a
+              #     parameter or resource is a template-validation error.
+              #   - We use a quoted EOF so bash writes the script file LITERALLY
+              #     without interpolating bash vars or command substitutions
+              #     during user-data exec — those evaluate when the script later
+              #     runs at shutdown, not now.
+              #   - Bash vars the script uses are written with the leading-bang
+              #     escape so CFN emits the literal dollar-brace form into the
+              #     script.
               cat <<'EOF' > /usr/local/bin/dump-carbon-logs.sh
               #!/bin/bash
               INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo unknown)
@@ -365,6 +366,47 @@ Resources:
               systemctl daemon-reload
               systemctl enable dump-carbon-logs.service
               systemctl start dump-carbon-logs.service
+
+              # On-demand watcher: polls S3 every 5s for a trigger flag and runs
+              # dump-carbon-logs.sh when one appears. test.sh on the Jenkins agent
+              # writes the flag, polls for the resulting tarball, downloads it, and
+              # prints to the pipeline console. The shutdown service above is a
+              # safety net for cases where the agent never gets a chance to fetch.
+              cat <<'EOF' > /usr/local/bin/dump-carbon-logs-watcher.sh
+              #!/bin/bash
+              TRIGGER="s3://${!S3_OUT}/dump-now"
+              while true; do
+                  if /usr/local/bin/aws s3 ls "${!TRIGGER}" >/dev/null 2>&1; then
+                      echo "[watcher] trigger detected, dumping carbon logs"
+                      /usr/local/bin/dump-carbon-logs.sh
+                      /usr/local/bin/aws s3 rm "${!TRIGGER}" >/dev/null 2>&1
+                      echo "[watcher] dump complete, trigger cleared"
+                  fi
+                  sleep 5
+              done
+              EOF
+              chmod +x /usr/local/bin/dump-carbon-logs-watcher.sh
+
+              cat <<EOF > /etc/systemd/system/dump-carbon-logs-watcher.service
+              [Unit]
+              Description=Watch S3 for on-demand carbon-log dump trigger
+              After=network-online.target
+              Requires=network-online.target
+
+              [Service]
+              Environment="PRODUCT_VERSION=${ProductVersion}"
+              Environment="S3_OUT=${S3OutputBucketLocation}"
+              ExecStart=/usr/local/bin/dump-carbon-logs-watcher.sh
+              Restart=always
+              RestartSec=10
+
+              [Install]
+              WantedBy=multi-user.target
+              EOF
+
+              systemctl daemon-reload
+              systemctl enable dump-carbon-logs-watcher.service
+              systemctl start dump-carbon-logs-watcher.service
               # ----- End carbon log dump setup -----
 
               # PUBLIC_DNS=$(curl http://169.254.169.254/latest/meta-data/public-hostname)
